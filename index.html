@@ -753,23 +753,39 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
   }
   
   try {
-    flash('Generando imagen...');
+    flash('Generando imagen de alta calidad...');
     
+    // Remover filtro y forzar tamaño exacto
     const originalFilter = docPage.style.filter;
+    const originalTransform = docPage.style.transform;
     docPage.style.filter = 'none';
+    docPage.style.transform = 'none';
+    
+    // Esperar un momento para que el DOM se estabilice
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     const canvas = await html2canvas(docPage, {
-      scale: 1.5,
+      scale: 2,  // Mayor calidad
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
-      width: docPage.scrollWidth,
-      height: docPage.scrollHeight,
+      logging: false,
+      width: docPage.offsetWidth,
+      height: docPage.offsetHeight,
       windowWidth: docPage.scrollWidth,
-      windowHeight: docPage.scrollHeight
+      windowHeight: docPage.scrollHeight,
+      onclone: (clonedDoc) => {
+        const clonedPage = clonedDoc.querySelector('.doc-page');
+        if(clonedPage) {
+          clonedPage.style.filter = 'none';
+          clonedPage.style.transform = 'none';
+        }
+      }
     });
     
+    // Restaurar estilos originales
     docPage.style.filter = originalFilter;
+    docPage.style.transform = originalTransform;
     
     const patientId = $("#patient_id")?.value || 'SinID';
     const tipo = currentPreviewDoc || 'DOC';
@@ -785,8 +801,8 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      flash(`Descargado: ${filename}`);
-    });
+      flash(`✓ Descargado: ${filename}`);
+    }, 'image/png', 1.0);
     
   } catch(err) {
     showErr('Error al generar imagen: ' + err.message);
