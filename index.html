@@ -58,12 +58,12 @@ body{font-family:Arial,sans-serif;font-size:10pt;background:var(--bg);margin:0;c
 .doc-page{position:relative;background:#fff;color:var(--ink);filter:grayscale(100%);margin:0 auto}
 .doc-letter{width:816px;height:1056px}
 .doc-letter.land{width:1056px;height:816px}
-.doc-wrap{font-size:16px;padding:28px 40px;transform-origin:top center}
+.doc-wrap{font-size:16px;padding:28px 57px 28px 76px;transform-origin:top center}
 .doc-header,.doc-footer{position:absolute;left:0;right:0;text-align:center}
 .doc-header{top:0;height:120px;display:flex;align-items:center;justify-content:center}
 .doc-footer{bottom:0;height:100px;display:flex;align-items:center;justify-content:center}
 .doc-header img,.doc-footer img{max-width:100%;max-height:100%;height:auto}
-.doc-wrap.has-hf{padding-top:120px;padding-bottom:100px}
+.doc-wrap.has-hf{padding:120px 57px 100px 76px}
 .doc-title{text-align:center;font-weight:800;letter-spacing:.02em;font-size:18px;margin:2px 0}
 .kv2{display:flex;justify-content:space-between;gap:12px;font-size:16px}
 .kv2 .kv{font-weight:700}
@@ -761,10 +761,15 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
     
     // Capturar como imagen
     const canvas = await html2canvas(docPage, {
-      scale: 2, // Calidad alta
+      scale: 1.5, // Calidad alta
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff'
+      width: docPage.scrollWidth,
+      height: docPage.scrollHeight,
+      windowWidth: docPage.scrollWidth,
+      windowHeight: docPage.scrollHeight
+});
     });
     
     // Restaurar filtro
