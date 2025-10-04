@@ -755,33 +755,27 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
   try {
     flash('Generando imagen...');
     
-    // Remover filtro grayscale temporalmente
     const originalFilter = docPage.style.filter;
     docPage.style.filter = 'none';
     
-    // Capturar como imagen
     const canvas = await html2canvas(docPage, {
-      scale: 1.5, // Calidad alta
+      scale: 1.5,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
       width: docPage.scrollWidth,
       height: docPage.scrollHeight,
       windowWidth: docPage.scrollWidth,
       windowHeight: docPage.scrollHeight
-});
     });
     
-    // Restaurar filtro
     docPage.style.filter = originalFilter;
     
-    // Generar nombre archivo
     const patientId = $("#patient_id")?.value || 'SinID';
     const tipo = currentPreviewDoc || 'DOC';
     const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
     const filename = `${patientId}-${tipo}-${fecha}.png`;
     
-    // Descargar imagen
     canvas.toBlob((blob) => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
