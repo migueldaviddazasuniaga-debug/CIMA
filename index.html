@@ -753,39 +753,42 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
   }
   
   try {
-    flash('Generando imagen de alta calidad...');
+    flash('Generando documento...');
     
-    // Remover filtro y forzar tamaño exacto
+    // Guardar zoom original y forzar 100%
+    const originalZoom = $("#zoomRange").value;
+    $("#zoomRange").value = 100;
+    applyZoom();
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    // Remover filtros
     const originalFilter = docPage.style.filter;
-    const originalTransform = docPage.style.transform;
     docPage.style.filter = 'none';
-    docPage.style.transform = 'none';
+    await new Promise(resolve => setTimeout(resolve, 200));
     
-    // Esperar un momento para que el DOM se estabilice
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
+    // Capturar con configuración optimizada
     const canvas = await html2canvas(docPage, {
-      scale: 2,  // Mayor calidad
+      scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
       logging: false,
-      width: docPage.offsetWidth,
-      height: docPage.offsetHeight,
-      windowWidth: docPage.scrollWidth,
-      windowHeight: docPage.scrollHeight,
+      removeContainer: true,
+      imageTimeout: 0,
       onclone: (clonedDoc) => {
-        const clonedPage = clonedDoc.querySelector('.doc-page');
-        if(clonedPage) {
-          clonedPage.style.filter = 'none';
-          clonedPage.style.transform = 'none';
+        const cloned = clonedDoc.querySelector('.doc-page');
+        if(cloned) {
+          cloned.style.filter = 'none';
+          cloned.style.transform = 'none';
+          cloned.style.position = 'relative';
         }
       }
     });
     
-    // Restaurar estilos originales
+    // Restaurar estado original
     docPage.style.filter = originalFilter;
-    docPage.style.transform = originalTransform;
+    $("#zoomRange").value = originalZoom;
+    applyZoom();
     
     const patientId = $("#patient_id")?.value || 'SinID';
     const tipo = currentPreviewDoc || 'DOC';
@@ -805,7 +808,7 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
     }, 'image/png', 1.0);
     
   } catch(err) {
-    showErr('Error al generar imagen: ' + err.message);
+    showErr('Error: ' + err.message);
     console.error(err);
   }
 });
