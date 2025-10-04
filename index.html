@@ -187,8 +187,27 @@ ul.compact li{margin:0;padding:0}
 </div>
 
 <div id="printableArea"></div>
-
 <div id="searchModal" class="modal-overlay">
+ <div id="exportModal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">Exportar documento</div>
+    <div class="modal-body">
+      <div style="text-align:center;margin:20px 0">
+        <button id="btnDownloadDoc" class="btn-primary" style="width:200px;margin:10px">
+          📥 Descargar PDF
+        </button>
+        <button id="btnEmailDoc" class="btn-primary" style="width:200px;margin:10px">
+          ✉️ Preparar email
+        </button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btnCancelExport" class="btn-secondary">Cancelar</button>
+    </div>
+  </div>
+</div>
+  
+  
   <div class="modal-box">
     <div class="modal-header">Buscar Historia Clínica</div>
     <div class="modal-body">
@@ -222,6 +241,7 @@ ul.compact li{margin:0;padding:0}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script>
 <script>
@@ -745,13 +765,14 @@ function openDoc(kind,card){
 $("#btnSigToggle")?.addEventListener('click',()=>{USE_SIG=!USE_SIG;mountFirma()});
 $("#zoomRange")?.addEventListener('input',applyZoom);
 $("#btnRefresh")?.addEventListener('click',()=>{if(currentPreviewCard&&currentPreviewDoc){openDoc(currentPreviewDoc,currentPreviewCard);flash('Preview actualizado')}});
-$("#btnPrint")?.addEventListener('click', async ()=>{
-  const docPage = $("#docPreview .doc-page");
-  if(!docPage){
-    showErr('No hay documento para exportar');
+// Reemplaza TODO el addEventListener del btnPrint por:
+$("#btnPrint")?.addEventListener('click', ()=>{
+  if(!currentPreviewDoc || !currentPreviewCard){
+    showErr('Primero genera un preview');
     return;
   }
-  
+  $('#exportModal').classList.add('active');
+});
   try {
     flash('Generando documento...');
     
@@ -795,18 +816,30 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
     const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
     const filename = `${patientId}-${tipo}-${fecha}.png`;
     
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      flash(`✓ Descargado: ${filename}`);
-    }, 'image/png', 1.0);
-    
+    // Reemplaza desde "canvas.toBlob(" hasta el final del try
+const imgData = canvas.toDataURL('image/png', 1.0);
+const { jsPDF } = window.jspdf;
+
+// Detectar orientación
+const isLandscape = currentPreviewDoc === 'RP';
+const pdf = new jsPDF({
+  orientation: isLandscape ? 'landscape' : 'portrait',
+  unit: 'mm',
+  format: 'letter'
+});
+
+const pageWidth = isLandscape ? 279.4 : 215.9;
+const pageHeight = isLandscape ? 215.9 : 279.4;
+
+pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
+
+const patientId = $("#patient_id")?.value || 'SinID';
+const tipo = currentPreviewDoc || 'DOC';
+const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
+const filename = `${patientId}-${tipo}-${fecha}.pdf`;
+
+pdf.save(filename);
+flash(`✓ PDF descargado: ${filename}`);
   } catch(err) {
     showErr('Error: ' + err.message);
     console.error(err);
@@ -1095,8 +1128,29 @@ function renderHCFromJSON(data){
     setChipsByLabels(card.querySelector('.chips-dx'),vdata.dx_chips||[]);
   });
 }
+$('#btnCancelExport')?.addEventListener('click', ()=>{
+  $('#exportModal').classList.remove('active');
+});
 
-document.addEventListener('DOMContentLoaded',async()=>{
+$('#btnDownloadDoc')?.addEventListener('click', async ()=>{
+  $('#exportModal').classList.remove('active');
+  // Aquí va todo el código de captura + PDF que te di arriba
+});
+
+$('#btnEmailDoc')?.addEventListener('click', ()=>{
+  $('#exportModal').classList.remove('active');
+  const email = $('#email')?.value || '';
+  const name = $('#full_name')?.value || 'Paciente';
+  const tipo = currentPreviewDoc === 'INF' ? 'informe médico' : 'receta médica';
+  
+  const subject = `Documentos médicos - Dra. Valentina González`;
+  const body = `Estimado(a) ${name},\n\nLe hacemos el envío de su ${tipo} por esta vía.\n\nAtenta a su evolución,\nDra. Valentina González Yanez\nOtorrinolaringología\n\n---\nConsultas: Hospital de Clínicas Caracas\nTeléfono: (0212) 5086321 - (0424) 1090979`;
+  
+  const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.open(mailtoLink, '_blank');
+  flash('Email preparado. Por favor adjunte manualmente los documentos descargados.');
+});
+  document.addEventListener('DOMContentLoaded',async()=>{
   try{
     let attempts=0;
     while(!window.supabase&&attempts<50){await new Promise(r=>setTimeout(r,100));attempts++}
