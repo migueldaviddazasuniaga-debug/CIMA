@@ -746,18 +746,41 @@ $("#zoomRange")?.addEventListener('input',applyZoom);
 $("#btnRefresh")?.addEventListener('click',()=>{if(currentPreviewCard&&currentPreviewDoc){openDoc(currentPreviewDoc,currentPreviewCard);flash('Preview actualizado')}});
 $("#btnPrint")?.addEventListener('click',()=>{
   const docPage=$("#docPreview .doc-page");
-  if(!docPage){showErr('No hay documento para imprimir');return}
-  try{
-    const printArea=$("#printableArea");
-    if(!printArea){showErr('Área de impresión no disponible');return}
-    const clonedDoc=docPage.cloneNode(true);
-    clonedDoc.style.filter='none';
-    clonedDoc.style.margin='0';
-    clonedDoc.style.pageBreakAfter='always';
-    printArea.innerHTML='';
-    printArea.appendChild(clonedDoc);
-    setTimeout(()=>{window.print();setTimeout(()=>printArea.innerHTML='',500)},300);
-  }catch(err){showErr('Error al preparar impresión: '+err.message)}
+  if(!docPage){showErr('No hay documento para exportar');return}
+  
+  // Crear ventana nueva con el documento
+  const printWindow=window.open('','_blank');
+  const docClone=docPage.cloneNode(true);
+  
+  // Remover filtro grayscale
+  docClone.style.filter='none';
+  docClone.style.margin='0 auto';
+  docClone.style.display='block';
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>${currentPreviewDoc} - ${$("#patient_id")?.value}</title>
+      <style>
+        body{margin:0;padding:20px;font-family:Arial,sans-serif}
+        @media print{body{padding:0}}
+        .doc-page{margin:0 auto;display:block}
+      </style>
+    </head>
+    <body>${docClone.outerHTML}</body>
+    </html>
+  `);
+  
+  printWindow.document.close();
+  
+  // Esperar a que cargue y dar opción
+  setTimeout(()=>{
+    if(confirm('¿Desea imprimir o guardar como PDF?\n\nOK = Imprimir/Guardar PDF\nCancelar = Cerrar')){
+      printWindow.print();
+    }
+  },500);
 });
 function serializeCurrentState(){
   const patient={
