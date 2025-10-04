@@ -221,6 +221,7 @@ ul.compact li{margin:0;padding:0}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script>
 <script>
@@ -744,45 +745,56 @@ function openDoc(kind,card){
 $("#btnSigToggle")?.addEventListener('click',()=>{USE_SIG=!USE_SIG;mountFirma()});
 $("#zoomRange")?.addEventListener('input',applyZoom);
 $("#btnRefresh")?.addEventListener('click',()=>{if(currentPreviewCard&&currentPreviewDoc){openDoc(currentPreviewDoc,currentPreviewCard);flash('Preview actualizado')}});
-$("#btnPrint")?.addEventListener('click',()=>{
-  const docPage=$("#docPreview .doc-page");
-  if(!docPage){showErr('No hay documento para exportar');return}
+$("#btnPrint")?.addEventListener('click', async ()=>{
+  const docPage = $("#docPreview .doc-page");
+  if(!docPage){
+    showErr('No hay documento para exportar');
+    return;
+  }
   
-  // Crear ventana nueva con el documento
-  const printWindow=window.open('','_blank');
-  const docClone=docPage.cloneNode(true);
-  
-  // Remover filtro grayscale
-  docClone.style.filter='none';
-  docClone.style.margin='0 auto';
-  docClone.style.display='block';
-  
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <title>${currentPreviewDoc} - ${$("#patient_id")?.value}</title>
-      <style>
-        body{margin:0;padding:20px;font-family:Arial,sans-serif}
-        @media print{body{padding:0}}
-        .doc-page{margin:0 auto;display:block}
-      </style>
-    </head>
-    <body>${docClone.outerHTML}</body>
-    </html>
-  `);
-  
-  printWindow.document.close();
-  
-  // Esperar a que cargue y dar opción
-  setTimeout(()=>{
-    if(confirm('¿Desea imprimir o guardar como PDF?\n\nOK = Imprimir/Guardar PDF\nCancelar = Cerrar')){
-      printWindow.print();
-    }
-  },500);
+  try {
+    flash('Generando imagen...');
+    
+    // Remover filtro grayscale temporalmente
+    const originalFilter = docPage.style.filter;
+    docPage.style.filter = 'none';
+    
+    // Capturar como imagen
+    const canvas = await html2canvas(docPage, {
+      scale: 2, // Calidad alta
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff'
+    });
+    
+    // Restaurar filtro
+    docPage.style.filter = originalFilter;
+    
+    // Generar nombre archivo
+    const patientId = $("#patient_id")?.value || 'SinID';
+    const tipo = currentPreviewDoc || 'DOC';
+    const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const filename = `${patientId}-${tipo}-${fecha}.png`;
+    
+    // Descargar imagen
+    canvas.toBlob((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      flash(`Descargado: ${filename}`);
+    });
+    
+  } catch(err) {
+    showErr('Error al generar imagen: ' + err.message);
+    console.error(err);
+  }
 });
-function serializeCurrentState(){
+  function serializeCurrentState(){
   const patient={
     patient_id:$('#patient_id')?.value||'',
     full_name:$('#full_name')?.value||'',
