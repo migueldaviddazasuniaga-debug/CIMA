@@ -104,6 +104,9 @@ ul.compact li{margin:0;padding:0}
 .modal-body{margin:16px 0}
 .modal-footer{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
 
+.export-option:has(input:checked){border-color:#007bff;background:#f0f7ff}
+.export-option:hover{border-color:#007bff}
+
 #printableArea{display:none}
 @media print{
   body *{visibility:hidden}
@@ -174,7 +177,7 @@ ul.compact li{margin:0;padding:0}
         <button id="btnRefresh" class="iconbtn" title="Actualizar preview" style="width:46px;height:46px">
           <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/refrescar.svg" alt="" style="width:26px;height:26px;filter:brightness(0)">
         </button>
-        <button id="btnPrint" class="iconbtn" title="Enviar documentos" style="width:46px;height:46px">
+        <button id="btnPrint" class="iconbtn" title="Exportar documento" style="width:46px;height:46px">
           <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/exportar.svg" alt="" style="width:26px;height:26px;filter:brightness(0)">
         </button>
       </div>
@@ -221,36 +224,45 @@ ul.compact li{margin:0;padding:0}
   </div>
 </div>
 
-<div id="emailModal" class="modal-overlay">
-  <div class="modal-box">
-    <div class="modal-header">Enviar documentos</div>
+<div id="exportModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">Exportar documento</div>
     <div class="modal-body">
-      <div class="row" style="margin-bottom:12px">
-        <div class="col">
-          <label class="form-label">Email del paciente:</label>
-          <input id="emailRecipient" class="form-input" type="email" placeholder="paciente@ejemplo.com">
-        </div>
-      </div>
-      <div class="row" style="margin-bottom:12px">
-        <div class="col">
-          <label class="form-label">Teléfono (WhatsApp):</label>
-          <input id="phoneRecipient" class="form-input" placeholder="+58 424...">
-        </div>
-      </div>
-      <div class="row">
-        <div class="col">
-          <label class="form-label">Documentos a enviar:</label>
-          <div style="margin-top:8px">
-            <label style="display:block;margin:4px 0"><input type="checkbox" id="sendInforme"> Informe médico</label>
-            <label style="display:block;margin:4px 0"><input type="checkbox" id="sendRecipe"> Receta médica</label>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        
+        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
+          <input type="checkbox" id="exportDownload" checked style="width:20px;height:20px;cursor:pointer">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/descargar.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Descargar PDF</div>
+            <div class="small" style="color:#666">Guarda en carpeta de descargas</div>
           </div>
-        </div>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
+          <input type="checkbox" id="exportEmail" checked style="width:20px;height:20px;cursor:pointer">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/enviar.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Enviar por Email</div>
+            <div class="small" style="color:#666">Link con PDF adjunto</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
+          <input type="checkbox" id="exportWhatsApp" style="width:20px;height:20px;cursor:pointer">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/whatsapp.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Enviar por WhatsApp</div>
+            <div class="small" style="color:#666">Link con PDF adjunto</div>
+          </div>
+        </label>
+
       </div>
-      <div id="emailStatus" class="small" style="margin-top:12px;color:#666"></div>
+      <div id="exportStatus" class="small" style="margin-top:16px;color:#666;text-align:center"></div>
     </div>
     <div class="modal-footer">
-      <button id="btnCancelEmail" class="btn-secondary">Cancelar</button>
-      <button id="btnSendEmail" class="btn-primary">Enviar</button>
+      <button id="btnCancelExport" class="btn-secondary">Cancelar</button>
+      <button id="btnDoExport" class="btn-primary">Exportar</button>
     </div>
   </div>
 </div>
@@ -782,27 +794,57 @@ $("#btnSigToggle")?.addEventListener('click',()=>{USE_SIG=!USE_SIG;mountFirma()}
 $("#zoomRange")?.addEventListener('input',applyZoom);
 $("#btnRefresh")?.addEventListener('click',()=>{if(currentPreviewCard&&currentPreviewDoc){openDoc(currentPreviewDoc,currentPreviewCard);flash('Preview actualizado')}});
 
-async function uploadToSupabase(pngDataUrl, filename) {
+$("#btnPrint")?.addEventListener('click', ()=>{
+  if(!currentPreviewDoc || !currentPreviewCard){
+    showErr('Primero genera un preview');
+    return;
+  }
+  $('#exportModal').classList.add('active');
+});
+
+$('#btnCancelExport')?.addEventListener('click', ()=>{
+  $('#exportModal').classList.remove('active');
+});
+
+$('#btnDoExport')?.addEventListener('click', async ()=>{
+  const doDownload = $("#exportDownload").checked;
+  const doEmail = $("#exportEmail").checked;
+  const doWhatsApp = $("#exportWhatsApp").checked;
+  
+  if(!doDownload && !doEmail && !doWhatsApp){
+    showErr('Seleccione al menos una opción');
+    return;
+  }
+  
   try {
-    const base64Data = pngDataUrl.split(',')[1];
-    const byteCharacters = atob(base64Data);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
+    $("#exportStatus").textContent = 'Generando PDF...';
+    $("#btnDoExport").disabled = true;
     
-    const imgBlob = new Blob([byteArray], { type: 'image/png' });
-    const imgUrl = URL.createObjectURL(imgBlob);
+    const docType = currentPreviewDoc === 'INF' ? 'Informe' : 'Receta';
+    const html = currentPreviewDoc === 'INF' ? buildReportHTML(currentPreviewCard) : buildRecipeHTML(currentPreviewCard);
     
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imgUrl;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+    
+    const docPage = tempDiv.querySelector('.doc-page');
+    docPage.style.filter = 'none';
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const canvas = await html2canvas(docPage, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false
     });
     
-    const isLandscape = filename.includes('Receta');
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    document.body.removeChild(tempDiv);
+    
+    const isLandscape = currentPreviewDoc === 'RP';
     const pdfWidth = isLandscape ? 297 : 210;
     const pdfHeight = isLandscape ? 210 : 297;
     
@@ -813,172 +855,75 @@ async function uploadToSupabase(pngDataUrl, filename) {
       format: 'a4'
     });
     
-    pdf.addImage(pngDataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    const pdfBlob = pdf.output('blob');
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
     
-    URL.revokeObjectURL(imgUrl);
+    const patientId = $("#patient_id")?.value || 'SinID';
+    const now = new Date();
+    const fecha = `${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
+    const filename = `${patientId}-${docType}-${fecha}.pdf`;
     
-    const { data, error } = await supabase.storage
-      .from('documentos-medicos')
-      .upload(filename, pdfBlob, {
-        contentType: 'application/pdf',
-        upsert: true
-      });
-    
-    if (error) throw error;
-    
-    const { data: urlData } = supabase.storage
-      .from('documentos-medicos')
-      .createSignedUrl(filename, 86400);
-    
-    return urlData.signedUrl;
-  } catch (err) {
-    console.error('Error subiendo a Supabase:', err);
-    throw err;
-  }
-}
-
-function generateFilename(tipo) {
-  const patientId = $("#patient_id")?.value || 'SinID';
-  const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const timestamp = Date.now();
-  return `${patientId}/${tipo}-${fecha}-${timestamp}.pdf`;
-}
-
-async function sendWhatsAppWithLinks(phone, nombre, documentLinks) {
-  const mensaje = `Estimado/a ${nombre}, adjunto los documentos de su consulta:\n\n${documentLinks.map(d => `${d.tipo}: ${d.url}`).join('\n')}`;
-  const phoneClean = phone.replace(/[^0-9]/g, '');
-  const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
-  window.open(whatsappUrl, '_blank');
-}
-
-$("#btnPrint")?.addEventListener('click', ()=>{
-  if(!currentPreviewDoc || !currentPreviewCard){
-    showErr('Primero genera un preview');
-    return;
-  }
-  const email = $("#email")?.value?.trim();
-  const phone = $("#phone")?.value?.trim();
-  if(email){
-    $("#emailRecipient").value = email;
-  }
-  if(phone){
-    $("#phoneRecipient").value = phone;
-  }
-  if(currentPreviewDoc === 'INF'){
-    $("#sendInforme").checked = true;
-    $("#sendRecipe").checked = false;
-  } else {
-    $("#sendInforme").checked = false;
-    $("#sendRecipe").checked = true;
-  }
-  $('#emailModal').classList.add('active');
-});
-
-$('#btnCancelEmail')?.addEventListener('click', ()=>{
-  $('#emailModal').classList.remove('active');
-});
-
-$('#btnSendEmail')?.addEventListener('click', async ()=>{
-  const recipientEmail = $("#emailRecipient").value?.trim();
-  const phone = $("#phoneRecipient").value?.trim();
-  const sendInf = $("#sendInforme").checked;
-  const sendRp = $("#sendRecipe").checked;
-  
-  if(!recipientEmail && !phone){
-    showErr('Ingrese email o teléfono del paciente');
-    return;
-  }
-  if(!sendInf && !sendRp){
-    showErr('Seleccione al menos un documento para enviar');
-    return;
-  }
-  
-  try {
-    $("#emailStatus").textContent = 'Generando documentos...';
-    $("#btnSendEmail").disabled = true;
-    
-    const documentLinks = [];
-    
-    if(sendInf){
-      const infHTML = buildReportHTML(currentPreviewCard);
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = infHTML;
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      document.body.appendChild(tempDiv);
-      
-      const docPage = tempDiv.querySelector('.doc-page');
-      docPage.style.filter = 'none';
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      const canvas = await html2canvas(docPage, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      });
-      
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      document.body.removeChild(tempDiv);
-      
-      $("#emailStatus").textContent = 'Subiendo informe PDF...';
-      const filename = generateFilename('Informe');
-      const url = await uploadToSupabase(imgData, filename);
-      documentLinks.push({ tipo: 'Informe médico', url });
+    if(doDownload){
+      pdf.save(filename);
+      flash(`✓ PDF descargado: ${filename}`);
     }
     
-    if(sendRp){
-      const rpHTML = buildRecipeHTML(currentPreviewCard);
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = rpHTML;
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      document.body.appendChild(tempDiv);
+    let pdfUrl = null;
+    
+    if(doEmail || doWhatsApp){
+      $("#exportStatus").textContent = 'Subiendo a la nube...';
+      const pdfBlob = pdf.output('blob');
+      const supabaseFilename = `${patientId}/${docType}-${fecha}-${Date.now()}.pdf`;
       
-      const docPage = tempDiv.querySelector('.doc-page');
-      docPage.style.filter = 'none';
-      await new Promise(resolve => setTimeout(resolve, 300));
+      const { data, error } = await supabase.storage
+        .from('documentos-medicos')
+        .upload(supabaseFilename, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
       
-      const canvas = await html2canvas(docPage, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false
-      });
+      if (error) throw error;
       
-      const imgData = canvas.toDataURL('image/png', 1.0);
-      document.body.removeChild(tempDiv);
+      const { data: urlData } = supabase.storage
+        .from('documentos-medicos')
+        .createSignedUrl(supabaseFilename, 86400);
       
-      $("#emailStatus").textContent = 'Subiendo receta PDF...';
-      const filename = generateFilename('Receta');
-      const url = await uploadToSupabase(imgData, filename);
-      documentLinks.push({ tipo: 'Receta médica', url });
+      pdfUrl = urlData.signedUrl;
     }
     
-    if(phone){
-      const nombre = $("#full_name")?.value || 'Paciente';
-      await sendWhatsAppWithLinks(phone, nombre, documentLinks);
-      flash('WhatsApp abierto con documentos PDF');
+    if(doWhatsApp && pdfUrl){
+      const phone = $("#phone")?.value?.trim();
+      if(phone){
+        const nombre = $("#full_name")?.value || 'Paciente';
+        const mensaje = `Estimado/a ${nombre}, adjunto documento de su consulta:\n\n${docType}: ${pdfUrl}`;
+        const phoneClean = phone.replace(/[^0-9]/g, '');
+        const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+        window.open(whatsappUrl, '_blank');
+        flash('WhatsApp abierto con link PDF');
+      }else{
+        showErr('No hay teléfono registrado para WhatsApp');
+      }
     }
     
-    if(recipientEmail){
-      const mensaje = `Estimado/a ${$("#full_name")?.value || 'Paciente'},\n\nAdjunto los documentos de su consulta:\n\n${documentLinks.map(d => `${d.tipo}: ${d.url}`).join('\n\n')}\n\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
-      const mailtoLink = `mailto:${recipientEmail}?subject=${encodeURIComponent('Documentos médicos - Consulta')}&body=${encodeURIComponent(mensaje)}`;
-      window.open(mailtoLink, '_blank');
-      flash('Email preparado con links a PDF');
+    if(doEmail && pdfUrl){
+      const email = $("#email")?.value?.trim();
+      if(email){
+        const mensaje = `Estimado/a ${$("#full_name")?.value || 'Paciente'},\n\nAdjunto documento de su consulta:\n\n${docType}: ${pdfUrl}\n\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
+        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent('Documentos médicos - Consulta')}&body=${encodeURIComponent(mensaje)}`;
+        window.open(mailtoLink, '_blank');
+        flash('Email preparado con link PDF');
+      }else{
+        showErr('No hay email registrado');
+      }
     }
     
-    $('#emailModal').classList.remove('active');
+    $('#exportModal').classList.remove('active');
     
   } catch(err) {
     showErr('Error: ' + err.message);
     console.error(err);
   } finally {
-    $("#emailStatus").textContent = '';
-    $("#btnSendEmail").disabled = false;
+    $("#exportStatus").textContent = '';
+    $("#btnDoExport").disabled = false;
   }
 });
 function serializeCurrentState(){
@@ -1288,7 +1233,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
         }
       }catch(err){console.error('Error cargando autoguardado:',err)}
     }
-    flash('Sistema CIMA listo - PDF con Supabase Storage');
+    flash('Sistema CIMA listo - PDF + Modal de exportación');
   }catch(ex){showErr('Error al iniciar: '+ex.message)}
 });
 
