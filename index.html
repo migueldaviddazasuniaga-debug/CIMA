@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CIMA — Sistema ORL</title>
 <style>
+/* ... (Todo el CSS se mantiene igual) ... */
 :root{--ink:#111;--bg:#f6f7fb;--red:#d40000}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -223,14 +224,16 @@ ul.compact li{margin:0;padding:0}
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script>
+<script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script> 
 <script>
 let visitIdCounter=0;
+// URL base del CDN para los assets (imágenes)
 const CDN_BASE='https://migueldaviddazasuniaga-debug.github.io/CIMA';
 const SUPABASE_URL='https://nfvpzcifcjjpmbpwsnbr.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
 
 let supabase;
+// Las plantillas de imágenes
 const TPL={
   'header-inf':`${CDN_BASE}/header-inf.png`,
   'footer-inf':`${CDN_BASE}/footer-inf.png`,
@@ -597,7 +600,7 @@ function mountPatientForm(){
       <div class="col" style="flex:0 1 140px"><label class="form-label">Estado</label><input id="state" class="form-input form-input-small"></div>
       <div class="col" style="flex:0 1 140px"><label class="form-label">País</label><input id="country" class="form-input form-input-small" value="Venezuela"></div>
     </div>`;
-  $("#has_seguro").addEventListener('change',(e)=>$("#seguro_box").classList.toggle('visible',e.target.checked));
+  $("#has_seguro")?.addEventListener('change',(e)=>$("#seguro_box")?.classList.toggle('visible',e.target.checked));
 }
 function visitCard(type='Primera'){
   const cardId='visit-'+(++visitIdCounter);
@@ -673,12 +676,12 @@ function visitCard(type='Primera'){
     });
     sp.appendChild(c);
   });
-  wrap.querySelector('.btn-inf').addEventListener('click',()=>{
+  wrap.querySelector('.btn-inf')?.addEventListener('click',()=>{
     wrap.querySelector('.doc-badge-inf')?.classList.remove('hidden');
     if(currentPreviewDoc==='INF'&&currentPreviewCard===wrap)closePreview();
     else openDoc('INF',wrap);
   });
-  wrap.querySelector('.btn-rp').addEventListener('click',()=>{
+  wrap.querySelector('.btn-rp')?.addEventListener('click',()=>{
     wrap.querySelector('.doc-badge-rp')?.classList.remove('hidden');
     if(currentPreviewDoc==='RP'&&currentPreviewCard===wrap)closePreview();
     else openDoc('RP',wrap);
@@ -769,7 +772,8 @@ function mountFirma(){
 }
 
 function applyZoom(){
-  const z=$("#zoomRange").value;
+  const z=$("#zoomRange")?.value;
+  if(!z)return;
   $("#zoomVal").textContent=z+'%';
   const pv=$("#docPreview");
   if(pv){
@@ -810,7 +814,7 @@ $("#btnPrint")?.addEventListener('click', async ()=>{
   try {
     flash('Generando imagen de alta calidad...');
     
-    const originalZoom = $("#zoomRange").value;
+    const originalZoom = $("#zoomRange")?.value || 60;
     $("#zoomRange").value = 100;
     applyZoom();
     await new Promise(resolve => setTimeout(resolve, 400));
@@ -895,7 +899,7 @@ function serializeCurrentState(){
       dx_text:card.querySelector('.txt-dx')?.value||'',
       dx_chips:[...card.querySelectorAll('.chips-dx .chip.on')].map(c=>c.textContent),
 
-      // 👇 NUEVO: Examen Físico (PE)
+      // Examen Físico (PE)
       pe_enabled: card.querySelector('.pe-toggle')?.checked || false,
       pe_chips: (()=>{
           const peData = {};
@@ -1071,8 +1075,17 @@ function downloadJSON(data,filename){
 
 setInterval(autoSaveToLocalStorage,120000);
 
+// MODIFICACIÓN CLAVE AQUÍ: AÑADIMOS VALIDACIÓN DE EXISTENCIA DE ELEMENTOS
 function bindToolbar(){
-  $("#btnNew")?.addEventListener('click',()=>{
+  // Aseguramos que todos los botones existen antes de enlazar los eventos
+  if (!$("#btnNew") || !$("#btnAddConsulta") || !$("#btnDeleteLast") || !$("#btnClose") || !$("#btnOpen") || !$("#btnTpl")) {
+      console.warn('Advertencia: No todos los botones de la barra de herramientas se encontraron en el DOM. Reintente la carga.');
+      // Opcionalmente, puedes usar un setTimeout para reintentar si el DOM no está listo
+      return; 
+  }
+
+
+  $("#btnNew").addEventListener('click',()=>{
     if(!confirm('¿Crear nueva historia médica? Se perderán los datos no guardados.'))return;
     $("#visitsContainer").innerHTML='';
     $("#patientForm")?.classList.remove('hidden');
@@ -1085,7 +1098,7 @@ function bindToolbar(){
     flash('Nueva historia médica iniciada');
   });
 
-  $("#btnAddConsulta")?.addEventListener('click',()=>{
+  $("#btnAddConsulta").addEventListener('click',()=>{
     const pid=$("#patient_id")?.value.trim();
     const name=$("#full_name")?.value.trim();
     if(!pid||!name){showErr('Complete al menos ID y nombre del paciente');return}
@@ -1186,7 +1199,7 @@ function bindToolbar(){
     autoSaveToLocalStorage();
   });
 
-  $("#btnDeleteLast")?.addEventListener('click',()=>{
+  $("#btnDeleteLast").addEventListener('click',()=>{
     const cards=$$('.visit-card');
     if(cards.length===0){showErr('No hay consultas para eliminar');return}
     if(cards.length===1){showErr('No se puede eliminar la única consulta');return}
@@ -1199,7 +1212,7 @@ function bindToolbar(){
     }
   });
 
-  $("#btnClose")?.addEventListener('click',async()=>{
+  $("#btnClose").addEventListener('click',async()=>{
     const data=serializeCurrentState();
     const hasData=data.patient.patient_id||data.patient.full_name;
     if(hasData){
@@ -1222,8 +1235,8 @@ function bindToolbar(){
     }
   });
 
-  $("#btnOpen")?.addEventListener('click',()=>openSearchModal());
-  $("#btnTpl")?.addEventListener('click',()=>flash('Las plantillas de Valentina se cargan automáticamente desde GitHub Pages'));
+  $("#btnOpen").addEventListener('click',()=>openSearchModal());
+  $("#btnTpl").addEventListener('click',()=>flash('Las plantillas de Valentina se cargan automáticamente desde GitHub Pages'));
 }
 
 
@@ -1287,7 +1300,7 @@ function renderHCFromJSON(data){
     restoreChips(card.querySelector('.chips-af'),vdata.af_chips);
     restoreChips(card.querySelector('.chips-dx'),vdata.dx_chips);
     
-    // --- NUEVO: Examen Físico (PE) ---
+    // --- Examen Físico (PE) ---
     const peToggle=card.querySelector('.pe-toggle');
     if(vdata.pe_enabled){
         peToggle.checked=true;
@@ -1303,12 +1316,12 @@ function renderHCFromJSON(data){
     }
 
 
-    // --- NUEVO: RP / Indicaciones / Plan ---
+    // --- RP / Indicaciones / Plan ---
     // Chips de receta por grupo
     if(vdata.recipe_chips_by_group){
       Object.entries(vdata.recipe_chips_by_group).forEach(([groupName,meds])=>{
         const group=card.querySelector(`.recipe-chips-group[data-group="${groupName}"]`);
-        if(!group)restoreChips(group,meds);
+        if(group)restoreChips(group,meds);
       });
       // Restaurar el texto del récipe (opcional, si se editó a mano)
       updateRecipeTextbox(card);
@@ -1335,7 +1348,6 @@ function renderHCFromJSON(data){
     // --- Estudios ---
     if(vdata.studies&&Array.isArray(vdata.studies)){
       const spWrap=card.querySelector('.study-panels-wrap');
-      const spPanels=card.querySelector('.studies-panels');
       vdata.studies.forEach(st=>{
         const chipBtn=[...card.querySelectorAll('.study-picker .chip')].find(c=>c.textContent===st.name);
         if(chipBtn)chipBtn.click(); // Asegura que el panel se monte
@@ -1361,12 +1373,16 @@ function renderHCFromJSON(data){
   
   flash('Historia médica cargada');
 }
+
+// ----------------------------------------------------
+// LÓGICA DE INICIALIZACIÓN
+// ----------------------------------------------------
+
 // Inicialización de Supabase
 supabase=Supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 flash('Sistema iniciado: Supabase OK');
 mountPatientForm();
-bindToolbar();
-bindSearchModal();
+bindToolbar(); // Llama a la función que ahora tiene las validaciones
 
 // Cargar autoguardado si existe
 const saved=localStorage.getItem('CIMA_autosave');
