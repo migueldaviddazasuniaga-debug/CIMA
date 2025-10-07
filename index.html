@@ -817,7 +817,7 @@ $('#btnDoExport')?.addEventListener('click', async ()=>{
   }
   
   try {
-    $("#exportStatus").textContent = 'Generando PDF...';
+    $("#exportStatus").textContent = 'Generando imagen...';
     $("#btnDoExport").disabled = true;
     
     const docType = currentPreviewDoc === 'INF' ? 'Informe' : 'Receta';
@@ -841,6 +841,149 @@ $('#btnDoExport')?.addEventListener('click', async ()=>{
       logging: false
     });
     
+    document.body.removeChild(tempDiv);
+    
+    // Convertir canvas a imagen para procesamiento
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imgData;
+    });
+    
+    $("#exportStatus").textContent = 'Convirtiendo a PDF...';
+    
+    // Crear PDF usando lógica de tu herramienta
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'letter',
+      compress: true
+    });
+    
+    const pageWidth = 215.9;
+    const pageHeight = 279.4;
+    
+    // Comprimir y rotar si es necesario
+    const processCanvas = document.createElement('canvas');
+    const ctx = processCanvas.getContext('2d');
+    
+    const isHorizontal = img.width > img.height;
+    
+    const maxSize = 1000;
+    let width = img.width;
+    let height = img.height;
+    
+    if (width > height && width > maxSize) {
+      height = (height * maxSize) / width;
+      width = maxSize;
+    } else if (height > maxSize) {
+      width = (width * maxSize) / height;
+      height = maxSize;
+    }
+    
+    if (isHorizontal) {
+      processCanvas.width = height;
+      processCanvas.height = width;
+      ctx.translate(height / 2, width / 2);
+      ctx.rotate(90 * Math.PI / 180);
+      ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    } else {
+      processCanvas.width = width;
+      processCanvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+    }
+    
+    const compressed = processCanvas.toDataURL('image/jpeg', 0.7);
+    
+    const imgRatio = processCanvas.width / processCanvas.height;
+    const pageRatio = pageWidth / pageHeight;
+    
+    let finalWidth, finalHeight;
+    if (imgRatio > pageRatio) {
+      finalWidth = pageWidth;
+      finalHeight = pageWidth / imgRatio;
+    } else {
+      finalHeight = pageHeight;
+      finalWidth = pageHeight * imgRatio;
+    }
+    
+    const x = (pageWidth - finalWidth) / 2;
+    const y = (pageHeight - finalHeight) / 2;
+    
+    pdf.addImage(compressed, 'JPEG', x, y, finalWidth, finalHeight);
+    
+    const patientId = $("#patient_id")?.value || 'SinID';
+    const now = new Date();
+    const fecha = `${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
+    const filename = `${patientId}-${docType}-${fecha}.pdf`;
+    
+    if(doDownload){
+      pdf.save(filename);
+      flash(`✓ PDF descargado: ${filename}`);
+    }
+    
+    let pdfUrl = null;
+    
+    if(doEmail || doWhatsApp){
+      $("#exportStatus").textContent = 'Subiendo a la nube...';
+      const pdfBlob = pdf.output('blob');
+      const supabaseFilename = `${patientId}/${docType}-${fecha}-${Date.now()}.pdf`;
+      
+      const { data, error } = await supabase.storage
+        .from('documentos-medicos')
+        .upload(supabaseFilename, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+      
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage
+        .from('documentos-medicos')
+        .createSignedUrl(supabaseFilename, 86400);
+      
+      pdfUrl = urlData.signedUrl;
+    }
+    
+    if(doWhatsApp && pdfUrl){
+      const phone = $("#phone")?.value?.trim();
+      if(phone){
+        const nombre = $("#full_name")?.value || 'Paciente';
+        const mensaje = `Estimado/a ${nombre}, adjunto documento de su consulta:\n\n${docType}: ${pdfUrl}`;
+        const phoneClean = phone.replace(/[^0-9]/g, '');
+        const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+        window.open(whatsappUrl, '_blank');
+        flash('WhatsApp abierto con link PDF');
+      }else{
+        showErr('No hay teléfono registrado para WhatsApp');
+      }
+    }
+    
+    if(doEmail && pdfUrl){
+      const email = $("#email")?.value?.trim();
+      if(email){
+        const mensaje = `Estimado/a ${$("#full_name")?.value || 'Paciente'},\n\nAdjunto documento de su consulta:\n\n${docType}: ${pdfUrl}\n\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
+        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent('Documentos médicos - Consulta')}&body=${encodeURIComponent(mensaje)}`;
+        window.open(mailtoLink, '_blank');
+        flash('Email preparado con link PDF');
+      }else{
+        showErr('No hay email registrado');
+      }
+    }
+    
+    $('#exportModal').classList.remove('active');
+    
+  } catch(err) {
+    showErr('Error: ' + err.message);
+    console.error(err);
+  } finally {
+    $("#exportStatus").textContent = '';
+    $("#btnDoExport").disabled = false;
+  }
+});    
     const imgData = canvas.toDataURL('image/png', 1.0);
     document.body.removeChild(tempDiv);
     
