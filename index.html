@@ -408,6 +408,31 @@ function makePESection(sectionName,subsections,parentContainer){
   parentContainer.appendChild(section);
 }
 
+function setChipsByLabels(container,labels){
+  const set=new Set(labels||[]);
+  container.querySelectorAll('.chip').forEach(ch=>{
+    const on=set.has(ch.textContent);
+    ch.dataset.active=on?'1':'0';
+    ch.classList.toggle('on',on);
+    if(ch.dataset.trigger==="Membrana Timpánica"){
+      const section=ch.closest('.pe-section');
+      const dependent=section.querySelector('[data-subsection="Membrana Timpánica"]');
+      if(dependent){
+        const chips=dependent.querySelectorAll('.chip');
+        if(ch.dataset.active==='1'){
+          chips.forEach(c=>c.classList.remove('disabled'));
+        }else{
+          chips.forEach(c=>{
+            c.classList.add('disabled');
+            c.dataset.active='0';
+            c.classList.remove('on');
+          });
+        }
+      }
+    }
+  });
+}
+
 function makePEPanels(){
   const peList=document.createElement('div');
   Object.entries(window.CIMA_DATA.PHYSICAL_EXAM).forEach(([mainSection,subsections])=>{
@@ -474,8 +499,12 @@ function updateIndicacionesSection(card){
   });
   dropdownsContainer.innerHTML='';
   if(!card.indicacionesData)card.indicacionesData={};
+  
+  const currentMeds=new Set();
+
   Object.entries(selectedByGroup).forEach(([groupName,meds])=>{
     meds.forEach(medName=>{
+      currentMeds.add(medName);
       const medDiv=document.createElement('div');
       medDiv.style.marginBottom='6px';
       medDiv.innerHTML=`<div class="small" style="color:#666;margin-bottom:2px">${medName}</div><select class="form-select indicacion-select" data-med="${medName}" data-group="${groupName}"><option value="">-- Seleccione indicación --</option></select>`;
@@ -486,6 +515,8 @@ function updateIndicacionesSection(card){
         opt.textContent=ind;
         select.appendChild(opt);
       });
+      
+      // Restaurar valor guardado o establecer el primero por defecto
       if(card.indicacionesData[medName]){
         select.value=card.indicacionesData[medName];
       }else{
@@ -499,6 +530,14 @@ function updateIndicacionesSection(card){
       dropdownsContainer.appendChild(medDiv);
     });
   });
+
+  // Limpiar indicacionesData de medicamentos que ya no están seleccionados
+  Object.keys(card.indicacionesData).forEach(med => {
+    if (!currentMeds.has(med)) {
+      delete card.indicacionesData[med];
+    }
+  });
+
   updateIndicacionesTextbox(card);
 }
 
@@ -602,6 +641,13 @@ function visitCard(type='Primera'){
       peWrap.classList.add('hidden');
     }
   });
+  wrap.addEventListener('chip-toggle', (ev) => {
+    // Si cualquier chip de PE cambia, se regenera el PE en el informe
+    if (ev.target.closest('.pe-panels')) {
+      if(currentPreviewCard===wrap && currentPreviewDoc==='INF') openDoc('INF', wrap);
+    }
+  });
+
   const sp=wrap.querySelector('.study-picker');
   const spWrap=wrap.querySelector('.study-panels-wrap');
   const spPanels=wrap.querySelector('.studies-panels');
@@ -650,7 +696,13 @@ function patientLine(){
 }
 
 function collectPE(card){
-  const panels=Array.from(card.querySelectorAll('.pe-panels .pe-section')).filter(p=>p.isConnected&&!p.closest('.pe-panels').classList.contains('hidden'));
+  // Solo recoge datos si el toggle está activo y los paneles no están ocultos
+  const peToggle = card.querySelector('.pe-toggle');
+  const pePanels = card.querySelector('.pe-panels');
+
+  if (!peToggle?.checked || pePanels?.classList.contains('hidden')) return '';
+
+  const panels=Array.from(pePanels.querySelectorAll('.pe-section'));
   if(!panels.length)return'';
   const results=[];
   panels.forEach(section=>{
@@ -660,6 +712,7 @@ function collectPE(card){
     subsections.forEach(subsec=>{
       const subsecName=subsec.querySelector('.small')?.textContent||'';
       const chips=[...subsec.querySelectorAll('.chip.on:not(.disabled)')].map(c=>c.textContent);
+      // Solo incluye subsección si tiene chips seleccionados
       if(chips.length>0)subsecResults.push(`${subsecName}: ${chips.join(', ')}`);
     });
     if(subsecResults.length>0)results.push(`${sectionName} - ${subsecResults.join(' | ')}`);
@@ -687,7 +740,7 @@ function buildReportHTML(card){
   const hab=(card.querySelector('.txt-hab')?.value||'').trim();
   const dx=(card.querySelector('.txt-dx')?.value||'').trim();
   const plan=(card.querySelector('.txt-plan')?.value||'').trim();
-  const pe=collectPE(card);
+  const pe=collectPE(card); // Corregido: Ahora solo recoge si está activo
   const studies=collectStudies(card);
   const hasHF=TPL['header-inf']||TPL['footer-inf'];
   return`<div class="doc-page doc-letter">${TPL['header-inf']?`<div class="doc-header"><img src="${TPL['header-inf']}"></div>`:''}<div class="doc-wrap ${hasHF?'has-hf':''}" id="docWrapINF" contenteditable="true"><div class="kv2"><div>${patientLine()}</div><div class="small">${fmtDateTime(date)}</div></div><div class="doc-title">INFORME MÉDICO - OTORRINOLARINGOLOGÍA</div>${ea?`<div class="kv2-line" style="white-space:pre-wrap;margin-top:2px">${ea}</div>`:''}${motivo?`<div class="kv2-line"><span class="kv">Motivo:</span> ${motivo}</div>`:''}${ap?`<div class="kv2-line"><span class="kv">Antecedentes personales:</span> ${ap}</div>`:''}${af?`<div class="kv2-line"><span class="kv">Antecedentes familiares:</span> ${af}</div>`:''}${hab?`<div class="kv2-line"><span class="kv">Hábitos psicobiológicos:</span> ${hab}</div>`:''}${pe?`<div class="kv2-line" style="margin-top:4px"><span class="kv">Examen físico:</span> <span style="white-space:pre-wrap">${pe}</span></div>`:''}${studies?`<div style="margin-top:4px"><span class="kv">Estudios realizados:</span><ul class="compact">${studies}</ul></div>`:''}${dx?`<div class="kv2-line" style="margin-top:6px"><span class="kv">Diagnóstico:</span> ${dx}</div>`:''}${plan?`<div class="kv2-line"><span class="kv">Plan / Tratamiento:</span> ${plan}</div>`:''}<div class="doc-sign" id="sigContainerInf"></div></div>${TPL['footer-inf']?`<div class="doc-footer"><img src="${TPL['footer-inf']}"></div>`:''}</div>`;
@@ -825,6 +878,7 @@ function serializeCurrentState(){
     state:$('#state')?.value||'',
     country:$('#country')?.value||''
   };
+
   const visits=[];
   $$('.visit-card').forEach((card,i)=>{
     const vdata={
@@ -840,9 +894,49 @@ function serializeCurrentState(){
       hab:card.querySelector('.txt-hab')?.value||'',
       dx_text:card.querySelector('.txt-dx')?.value||'',
       dx_chips:[...card.querySelectorAll('.chips-dx .chip.on')].map(c=>c.textContent),
+
+      // 👇 NUEVO: Examen Físico (PE)
+      pe_enabled: card.querySelector('.pe-toggle')?.checked || false,
+      pe_chips: (()=>{
+          const peData = {};
+          const peToggle = card.querySelector('.pe-toggle');
+          // Solo serializa si está activado
+          if(peToggle?.checked){
+              card.querySelectorAll('.pe-subsection').forEach(subsec => {
+                  // Encuentra la subsección por el atributo data-subsection, si existe
+                  const subName = subsec.querySelector('.pe-chips')?.dataset.subsection || subsec.querySelector('.small')?.textContent;
+                  const chips = [...subsec.querySelectorAll('.chip.on:not(.disabled)')].map(c=>c.textContent);
+                  if(chips.length > 0 && subName) peData[subName] = chips;
+              });
+          }
+          return peData;
+      })(),
+
+      // RECIPE / INDICACIONES / PLAN
+      recipe_text:card.querySelector('.txt-recipe')?.value||'',
+      indicaciones_text:card.querySelector('.txt-indicaciones')?.value||'',
+      plan_text:card.querySelector('.txt-plan')?.value||'',
+
+      recipe_chips_by_group:(()=>{
+        const obj={};
+        card.querySelectorAll('.recipe-chips-group').forEach(g=>{
+          const group=g.dataset.group;
+          const sel=[...g.querySelectorAll('.chip.on')].map(c=>c.textContent);
+          if(sel.length)obj[group]=sel;
+        });
+        return obj;
+      })(),
+
+      indicaciones_map: (card.indicacionesData && typeof card.indicacionesData==='object')
+        ? {...card.indicacionesData}
+        : {},
+
+      // Estudios
       studies:[]
     };
-    card.querySelectorAll('.studies-panels .study-panel').forEach(panel=>{
+    
+    const spPanels=card.querySelector('.studies-panels');
+    vdata.studies=$$('.study-panel',spPanels).map(panel=>{
       const studyData={
         name:panel.dataset.studyName,
         conclusion:panel.querySelector('.study-concl-input')?.value||'',
@@ -853,29 +947,45 @@ function serializeCurrentState(){
         const selected=[...g.querySelectorAll('.chip.on')].map(c=>c.textContent);
         if(selected.length)studyData.groups[groupName]=selected;
       });
-      vdata.studies.push(studyData);
+      return studyData;
     });
+
     visits.push(vdata);
   });
-  return{patient,visits,timestamp:new Date().toISOString()};
+
+  return {patient,visits,timestamp:new Date().toISOString()};
 }
 
 async function saveToSupabase(){
   try{
     const data=serializeCurrentState();
     if(!data.patient.patient_id||!data.patient.full_name){showErr('Complete ID y nombre del paciente');return}
-    const{data:existingPatient}=await supabase.from('pacientes').select('id').eq('patient_id',data.patient.patient_id).single();
+    
+    // 1. Guardar o actualizar paciente
+    const patientDataToSave = {...data.patient, updated_at: new Date().toISOString()};
+    const{data:existingPatient,error:selectError}=await supabase.from('pacientes').select('id').eq('patient_id',data.patient.patient_id).single();
+    if(selectError && selectError.code!=='PGRST116'){ // PGRST116 = No Rows Found
+      throw selectError;
+    }
+
     let pacienteId;
     if(existingPatient){
-      await supabase.from('pacientes').update({...data.patient,updated_at:new Date().toISOString()}).eq('id',existingPatient.id);
+      const {error: updateError} = await supabase.from('pacientes').update(patientDataToSave).eq('id',existingPatient.id);
+      if(updateError) throw updateError;
       pacienteId=existingPatient.id;
-      await supabase.from('consultas').delete().eq('paciente_id',pacienteId);
+      // 2. Eliminar consultas antiguas antes de insertar las nuevas
+      const {error: deleteError} = await supabase.from('consultas').delete().eq('paciente_id',pacienteId);
+      if(deleteError) throw deleteError;
     }else{
-      const{data:newPatient}=await supabase.from('pacientes').insert([data.patient]).select().single();
+      const{data:newPatient,error:insertError}=await supabase.from('pacientes').insert([patientDataToSave]).select().single();
+      if(insertError) throw insertError;
       pacienteId=newPatient.id;
     }
+    
+    // 3. Insertar todas las consultas
     for(const visit of data.visits){
-      await supabase.from('consultas').insert([{paciente_id:pacienteId,tipo:visit.type,fecha:visit.date,datos:visit}]);
+      const {error: visitInsertError} = await supabase.from('consultas').insert([{paciente_id:pacienteId, tipo:visit.type, fecha:visit.date, datos:visit}]);
+      if(visitInsertError) throw visitInsertError;
     }
     flash('Historia guardada en Supabase');
   }catch(err){showErr('Error guardando: '+err.message);console.error('Supabase save error:',err)}
@@ -966,35 +1076,116 @@ function bindToolbar(){
     if(!confirm('¿Crear nueva historia médica? Se perderán los datos no guardados.'))return;
     $("#visitsContainer").innerHTML='';
     $("#patientForm")?.classList.remove('hidden');
-    $('#patient_id').value='';$('#full_name').value='';$('#birthdate').value='';$('#sex').value='';$('#ocupacion').value='';$('#has_seguro').checked=false;$('#seguro_company').value='';$('#seguro_box')?.classList.remove('visible');$('#email').value='';$('#phone').value='';$('#city').value='';$('#state').value='';$('#country').value='Venezuela';
+    $('#patient_id').value='';$('#full_name').value='';$('#birthdate').value='';$('#sex').value='';$('#ocupacion').value='';
+    $('#has_seguro').checked=false;$('#seguro_company').value='';$('#seguro_box')?.classList.remove('visible');
+    $('#email').value='';$('#phone').value='';$('#city').value='';$('#state').value='';$('#country').value='Venezuela';
     closePreview();
     visitIdCounter=0;
     localStorage.removeItem('CIMA_autosave');
     flash('Nueva historia médica iniciada');
   });
+
   $("#btnAddConsulta")?.addEventListener('click',()=>{
     const pid=$("#patient_id")?.value.trim();
     const name=$("#full_name")?.value.trim();
     if(!pid||!name){showErr('Complete al menos ID y nombre del paciente');return}
     if(!validatePatientId(pid)){showErr('ID debe tener formato: Letra(s)-Número (ej: V-12345)');return}
+
     const existingCards=$$('.visit-card');
+
     if(existingCards.length===0){
+      // Primera
       const v=visitCard('Primera');
       $("#visitsContainer").appendChild(v);
       flash('Primera consulta creada');
     }else{
-      const first=existingCards[0];
+      // Sucesiva (heredar datos de la última consulta)
+      const first=existingCards[existingCards.length-1]; // Usar la ÚLTIMA como referencia
       const v=visitCard('Sucesiva');
+
+      // helpers de copia
       const copyVal=sel=>first.querySelector(sel)?.value||'';
       const set=(sel,val)=>{const el=v.querySelector(sel);if(el){el.value=val;el.dataset.freeText=val}};
-      set('.txt-ea',copyVal('.txt-ea'));set('.txt-ap',copyVal('.txt-ap'));set('.txt-af',copyVal('.txt-af'));set('.txt-hab',copyVal('.txt-hab'));set('.txt-dx',copyVal('.txt-dx'));
-      const copyChips=(from,to)=>{const labels=[...first.querySelectorAll(from+' .chip.on')].map(c=>c.textContent);v.querySelectorAll(to+' .chip').forEach(ch=>{const on=labels.includes(ch.textContent);ch.dataset.active=on?'1':'0';ch.classList.toggle('on',on)})};
-      copyChips('.chips-motivo','.chips-motivo');copyChips('.chips-ap','.chips-ap');copyChips('.chips-af','.chips-af');copyChips('.chips-dx','.chips-dx');
+      const copyChips=(from,to)=>{
+        const labels=[...first.querySelectorAll(from+' .chip.on')].map(c=>c.textContent);
+        v.querySelectorAll(to+' .chip').forEach(ch=>{
+          const on=labels.includes(ch.textContent);
+          ch.dataset.active=on?'1':'0';
+          ch.classList.toggle('on',on);
+        });
+      };
+
+      // 1) copiar textos clínicos base
+      set('.txt-ea', copyVal('.txt-ea'));
+      set('.txt-ap', copyVal('.txt-ap'));
+      set('.txt-af', copyVal('.txt-af'));
+      set('.txt-hab', copyVal('.txt-hab'));
+      set('.txt-dx', copyVal('.txt-dx'));
+
+      // 2) copiar chips clínicos base (Motivo/AP/AF/DX)
+      copyChips('.chips-motivo','.chips-motivo');
+      copyChips('.chips-ap','.chips-ap');
+      copyChips('.chips-af','.chips-af');
+      copyChips('.chips-dx','.chips-dx');
+
+      // 3) Heredar Examen Físico (PE)
+      const peToggleFirst = first.querySelector('.pe-toggle');
+      const peToggleNew = v.querySelector('.pe-toggle');
+      if (peToggleFirst?.checked) {
+          peToggleNew.checked = true;
+          peToggleNew.dispatchEvent(new Event('change')); // Monta los paneles PE
+
+          // Copiar chips de PE
+          first.querySelectorAll('.pe-subsection').forEach(subsecFirst => {
+              const subName = subsecFirst.querySelector('.pe-chips')?.dataset.subsection || subsecFirst.querySelector('.small')?.textContent;
+              if (!subName) return;
+              
+              const chipsFirst = [...subsecFirst.querySelectorAll('.chip.on:not(.disabled)')].map(c => c.textContent);
+              const subsecNew = v.querySelector(`.pe-chips[data-subsection="${subName}"]`);
+
+              if (subsecNew) {
+                  // Restaurar chips y manejar el chip 'Membrana Timpánica'
+                  setChipsByLabels(subsecNew, chipsFirst);
+              }
+          });
+      }
+
+      // 4) Heredar RP / Indicaciones / Plan
+      // 4.1 textos
+      set('.txt-recipe',       copyVal('.txt-recipe'));
+      set('.txt-indicaciones', copyVal('.txt-indicaciones'));
+      set('.txt-plan',         copyVal('.txt-plan'));
+
+      // 4.2 chips de receta por grupo (medicamentos seleccionados)
+      v.querySelectorAll('.recipe-chips-group').forEach(group=>{
+        const groupName=group.dataset.group;
+        const selectedInFirst=[...first.querySelectorAll(`.recipe-chips-group[data-group="${groupName}"] .chip.on`)]
+          .map(c=>c.textContent);
+        group.querySelectorAll('.chip').forEach(ch=>{
+          const on=selectedInFirst.includes(ch.textContent);
+          ch.dataset.active=on?'1':'0';
+          ch.classList.toggle('on',on);
+        });
+      });
+
+      // 4.3 mapa de indicaciones (combos) y reconstrucción UI
+      v.indicacionesData={...(first.indicacionesData||{})};
+      updateIndicacionesSection(v); // repinta combos según chips activos en v
+
+      // 4.4 bloquear auto-generado para no pisar lo heredado
+      const lock=(sel)=>{const el=v.querySelector(sel);if(el&&el.value){el.dataset.userEdited='1'}};
+      lock('.txt-recipe');
+      lock('.txt-indicaciones');
+      lock('.txt-plan');
+
+      // montar card
       $("#visitsContainer").appendChild(v);
       flash('Consulta sucesiva agregada');
     }
+
     autoSaveToLocalStorage();
   });
+
   $("#btnDeleteLast")?.addEventListener('click',()=>{
     const cards=$$('.visit-card');
     if(cards.length===0){showErr('No hay consultas para eliminar');return}
@@ -1007,6 +1198,7 @@ function bindToolbar(){
       autoSaveToLocalStorage();
     }
   });
+
   $("#btnClose")?.addEventListener('click',async()=>{
     const data=serializeCurrentState();
     const hasData=data.patient.patient_id||data.patient.full_name;
@@ -1029,18 +1221,11 @@ function bindToolbar(){
       flash('Historia cerrada');
     }
   });
+
   $("#btnOpen")?.addEventListener('click',()=>openSearchModal());
   $("#btnTpl")?.addEventListener('click',()=>flash('Las plantillas de Valentina se cargan automáticamente desde GitHub Pages'));
 }
 
-function setChipsByLabels(container,labels){
-  const set=new Set(labels||[]);
-  container.querySelectorAll('.chip').forEach(ch=>{
-    const on=set.has(ch.textContent);
-    ch.dataset.active=on?'1':'0';
-    ch.classList.toggle('on',on);
-  });
-}
 
 function ensureStudyPanel(card,name){
   const chipBtn=[...card.querySelectorAll('.study-picker .chip')].find(c=>c.textContent===name);
@@ -1049,78 +1234,156 @@ function ensureStudyPanel(card,name){
 }
 
 function renderHCFromJSON(data){
-  $("#visitsContainer").innerHTML='';
-  $("#patientForm")?.classList.remove('hidden');
-  const p=data.patient||{};
-  $('#patient_id').value=p.patient_id||'';$('#full_name').value=p.full_name||'';$('#birthdate').value=p.birthdate||'';$('#sex').value=p.sex||'';$('#ocupacion').value=p.ocupacion||'';$('#has_seguro').checked=p.has_seguro||false;$('#seguro_company').value=p.seguro_company||'';
-  if(p.has_seguro)$('#seguro_box')?.classList.add('visible');
-  $('#email').value=p.email||'';$('#phone').value=p.phone||'';$('#city').value=p.city||'';$('#state').value=p.state||'';$('#country').value=p.country||'';
-  const visits=Array.isArray(data.visits)?data.visits:[];
-  visits.forEach((vdata,i)=>{
-    const type=vdata.type||(i===0?'Primera':'Sucesiva');
-    const card=visitCard(type);
-    $("#visitsContainer").appendChild(card);
-    card.querySelector('.visit-date').value=vdata.date||getLocalDateTime();
-    if(vdata.ea!=null){const ea=card.querySelector('.txt-ea');if(ea)ea.value=vdata.ea||ea.value}
-    const set=(sel,val)=>{const el=card.querySelector(sel);if(el){el.value=val||'';el.dataset.freeText=el.value}};
-    set('.txt-motivo',vdata.motivo_libre);
-    setChipsByLabels(card.querySelector('.chips-motivo'),vdata.motivos||[]);
-    set('.txt-ap',vdata.ap_text);
-    setChipsByLabels(card.querySelector('.chips-ap'),vdata.ap_chips||[]);
-    set('.txt-af',vdata.af_text);
-    setChipsByLabels(card.querySelector('.chips-af'),vdata.af_chips||[]);
-    set('.txt-hab',vdata.hab);
-    if(Array.isArray(vdata.studies)){
-      vdata.studies.forEach(s=>{
-        const panel=ensureStudyPanel(card,s.name);
-        if(!panel)return;
-        if(s.groups){
-          Object.entries(s.groups).forEach(([grp,arr])=>{
-            const g=[...panel.querySelectorAll('.study-group')].find(x=>x.querySelector('.g-title').textContent===grp);
-            if(!g)return;
-            g.querySelectorAll('.chip').forEach(ch=>{
-              const on=(arr||[]).includes(ch.textContent);
-              ch.dataset.active=on?'1':'0';
-              ch.classList.toggle('on',on);
-            });
-          });
-        }
-        const ta=panel.querySelector('.study-concl-input');
-        if(ta&&s.conclusion){ta.value=s.conclusion;ta.dataset.userEdited='1'}
-      });
-    }
-    set('.txt-dx',vdata.dx_text);
-    setChipsByLabels(card.querySelector('.chips-dx'),vdata.dx_chips||[]);
-  });
-}
-document.addEventListener('DOMContentLoaded',async()=>{
-  try{
-    let attempts=0;
-    while(!window.supabase&&attempts<50){await new Promise(r=>setTimeout(r,100));attempts++}
-    if(window.supabase){
-      supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-    }else{
-      showErr('Error cargando Supabase');
-    }
-    mountPatientForm();
-    bindToolbar();
-    bindSearchModal();
-    const autosave=localStorage.getItem('CIMA_autosave');
-    if(autosave){
-      try{
-        const data=JSON.parse(autosave);
-        if(confirm('Autoguardado encontrado. ¿Recuperar?')){
-          renderHCFromJSON(data);
-          flash('Autoguardado recuperado');
-        }else{
-          localStorage.removeItem('CIMA_autosave');
-        }
-      }catch(err){console.error('Error cargando autoguardado:',err)}
-    }
-    flash('Sistema CIMA listo - Plantillas de Valentina cargadas');
-  }catch(ex){showErr('Error al iniciar: '+ex.message)}
-});
+  if(!data)return;
+  const {patient,visits}=data;
 
+  // --- Paciente ---
+  $('#patient_id').value=patient.patient_id||'';
+  $('#full_name').value=patient.full_name||'';
+  $('#birthdate').value=patient.birthdate||'';
+  $('#sex').value=patient.sex||'';
+  $('#ocupacion').value=patient.ocupacion||'';
+  $('#has_seguro').checked=patient.has_seguro||false;
+  $('#seguro_company').value=patient.seguro_company||'';
+  $('#email').value=patient.email||'';
+  $('#phone').value=patient.phone||'';
+  $('#city').value=patient.city||'';
+  $('#state').value=patient.state||'';
+  $('#country').value=patient.country||'Venezuela';
+  $('#seguro_box').classList.toggle('visible',$('#has_seguro').checked);
+  $("#patientForm")?.classList.remove('hidden'); // Asegura que el formulario del paciente sea visible
+
+  $("#visitsContainer").innerHTML='';
+  visitIdCounter=0;
+
+  visits.forEach(vdata=>{
+    const card=visitCard(vdata.type||'Primera');
+    
+    // Función helper para restaurar chips
+    const restoreChips=(container,arr)=>{
+      if(!arr)return;
+      setChipsByLabels(container, arr);
+      
+      // Si el contenedor es de PE, dispara el toggle para los dependientes
+      if(container.closest('.pe-subsection')){
+          const triggerChip = container.querySelector('[data-trigger="Membrana Timpánica"]');
+          if(triggerChip && triggerChip.dataset.active==='1'){
+             triggerChip.dispatchEvent(new CustomEvent('chip-toggle',{bubbles:true}));
+          }
+      }
+    };
+    
+    // --- Campos básicos y chips de Motivo/AP/AF/DX ---
+    card.querySelector('.visit-date').value=vdata.date||'';
+    card.querySelector('.txt-ea').value=vdata.ea||'';
+    card.querySelector('.txt-motivo').value=vdata.motivo_libre||'';
+    card.querySelector('.txt-ap').value=vdata.ap_text||'';
+    card.querySelector('.txt-af').value=vdata.af_text||'';
+    card.querySelector('.txt-hab').value=vdata.hab||'';
+    card.querySelector('.txt-dx').value=vdata.dx_text||'';
+
+    restoreChips(card.querySelector('.chips-motivo'),vdata.motivos);
+    restoreChips(card.querySelector('.chips-ap'),vdata.ap_chips);
+    restoreChips(card.querySelector('.chips-af'),vdata.af_chips);
+    restoreChips(card.querySelector('.chips-dx'),vdata.dx_chips);
+    
+    // --- NUEVO: Examen Físico (PE) ---
+    const peToggle=card.querySelector('.pe-toggle');
+    if(vdata.pe_enabled){
+        peToggle.checked=true;
+        peToggle.dispatchEvent(new Event('change')); // Activa el toggle y monta los paneles PE
+        
+        if(vdata.pe_chips){
+            // Restaurar chips de PE en los paneles recién montados
+            Object.entries(vdata.pe_chips).forEach(([subName,chips])=>{
+                const peChipsContainer=card.querySelector(`.pe-chips[data-subsection="${subName}"]`);
+                if(peChipsContainer)restoreChips(peChipsContainer,chips);
+            });
+        }
+    }
+
+
+    // --- NUEVO: RP / Indicaciones / Plan ---
+    // Chips de receta por grupo
+    if(vdata.recipe_chips_by_group){
+      Object.entries(vdata.recipe_chips_by_group).forEach(([groupName,meds])=>{
+        const group=card.querySelector(`.recipe-chips-group[data-group="${groupName}"]`);
+        if(!group)restoreChips(group,meds);
+      });
+      // Restaurar el texto del récipe (opcional, si se editó a mano)
+      updateRecipeTextbox(card);
+    }
+
+    // Mapa de indicaciones y combos
+    card.indicacionesData={...(vdata.indicaciones_map||{})};
+    updateIndicacionesSection(card); // Reconstruye los combos y les asigna el valor guardado.
+
+    // Textos de RP / Indicaciones / Plan (finales)
+    const setTxt=(sel,val)=>{
+      const el=card.querySelector(sel);
+      if(el&&typeof val==='string'){
+        el.value=val;
+        if(val.trim()){
+           el.dataset.userEdited='1'; // Bloquea la auto-generación para mantener el valor guardado
+        }
+      }
+    };
+    setTxt('.txt-recipe',vdata.recipe_text);
+    setTxt('.txt-indicaciones',vdata.indicaciones_text);
+    setTxt('.txt-plan',vdata.plan_text);
+    
+    // --- Estudios ---
+    if(vdata.studies&&Array.isArray(vdata.studies)){
+      const spWrap=card.querySelector('.study-panels-wrap');
+      const spPanels=card.querySelector('.studies-panels');
+      vdata.studies.forEach(st=>{
+        const chipBtn=[...card.querySelectorAll('.study-picker .chip')].find(c=>c.textContent===st.name);
+        if(chipBtn)chipBtn.click(); // Asegura que el panel se monte
+        
+        const panel=[...card.querySelectorAll('.studies-panels .study-panel')].find(p=>p.dataset.studyName===st.name);
+
+        if(panel){
+             panel.querySelector('.study-concl-input').value=st.conclusion||'';
+             // Restaurar chips de estudio
+             if(st.groups){
+                Object.entries(st.groups).forEach(([groupName, chips])=>{
+                    const groupContainer = [...panel.querySelectorAll('.study-group')].find(g=>g.querySelector('.g-title').textContent === groupName);
+                    if(groupContainer) restoreChips(groupContainer.querySelector('.chips'), chips);
+                });
+            }
+        }
+      });
+      if(vdata.studies.length)spWrap.classList.remove('hidden');
+    }
+
+    $("#visitsContainer").appendChild(card);
+  });
+  
+  flash('Historia médica cargada');
+}
+// Inicialización de Supabase
+supabase=Supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+flash('Sistema iniciado: Supabase OK');
+mountPatientForm();
+bindToolbar();
+bindSearchModal();
+
+// Cargar autoguardado si existe
+const saved=localStorage.getItem('CIMA_autosave');
+if(saved){
+    if(confirm('Se encontró una sesión autoguardada. ¿Desea cargarla?')){
+        try{
+            renderHCFromJSON(JSON.parse(saved));
+            flash('Sesión autoguardada cargada');
+        }catch(e){
+            showErr('Error cargando autoguardado: '+e.message);
+            localStorage.removeItem('CIMA_autosave');
+        }
+    }
+}else{
+    // Mostrar formulario del paciente al inicio si no hay autoguardado
+    $("#patientForm")?.classList.remove('hidden');
+}
 })();
 </script>
 </body>
