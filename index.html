@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CIMA — Sistema ORL</title>
 <style>
-/* ... (Todo el CSS se mantiene igual) ... */
 :root{--ink:#111;--bg:#f6f7fb;--red:#d40000}
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -105,6 +104,9 @@ ul.compact li{margin:0;padding:0}
 .modal-body{margin:16px 0}
 .modal-footer{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
 
+.export-option:has(input:checked){border-color:#007bff;background:#f0f7ff}
+.export-option:hover{border-color:#007bff}
+
 #printableArea{display:none}
 @media print{
   body *{visibility:hidden}
@@ -175,7 +177,7 @@ ul.compact li{margin:0;padding:0}
         <button id="btnRefresh" class="iconbtn" title="Actualizar preview" style="width:46px;height:46px">
           <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/refrescar.svg" alt="" style="width:26px;height:26px;filter:brightness(0)">
         </button>
-        <button id="btnPrint" class="iconbtn" title="Imprimir" style="width:46px;height:46px">
+        <button id="btnPrint" class="iconbtn" title="Exportar documento" style="width:46px;height:46px">
           <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/exportar.svg" alt="" style="width:26px;height:26px;filter:brightness(0)">
         </button>
       </div>
@@ -222,18 +224,60 @@ ul.compact li{margin:0;padding:0}
   </div>
 </div>
 
+<div id="exportModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">Exportar documento</div>
+    <div class="modal-body">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        
+        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
+          <input type="checkbox" id="exportDownload" checked style="width:20px;height:20px;cursor:pointer">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/descargar.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Descargar PDF</div>
+            <div class="small" style="color:#666">Guarda en carpeta de descargas</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
+          <input type="checkbox" id="exportEmail" checked style="width:20px;height:20px;cursor:pointer">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/enviar.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Enviar por Email</div>
+            <div class="small" style="color:#666">Link con PDF adjunto</div>
+          </div>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
+          <input type="checkbox" id="exportWhatsApp" style="width:20px;height:20px;cursor:pointer">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/whatsapp.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Enviar por WhatsApp</div>
+            <div class="small" style="color:#666">Link con PDF adjunto</div>
+          </div>
+        </label>
+
+      </div>
+      <div id="exportStatus" class="small" style="margin-top:16px;color:#666;text-align:center"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="btnCancelExport" class="btn-secondary">Cancelar</button>
+      <button id="btnDoExport" class="btn-primary">Exportar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script> 
+<script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script>
 <script>
 let visitIdCounter=0;
-// URL base del CDN para los assets (imágenes)
 const CDN_BASE='https://migueldaviddazasuniaga-debug.github.io/CIMA';
 const SUPABASE_URL='https://nfvpzcifcjjpmbpwsnbr.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
 
 let supabase;
-// Las plantillas de imágenes
 const TPL={
   'header-inf':`${CDN_BASE}/header-inf.png`,
   'footer-inf':`${CDN_BASE}/footer-inf.png`,
@@ -411,31 +455,6 @@ function makePESection(sectionName,subsections,parentContainer){
   parentContainer.appendChild(section);
 }
 
-function setChipsByLabels(container,labels){
-  const set=new Set(labels||[]);
-  container.querySelectorAll('.chip').forEach(ch=>{
-    const on=set.has(ch.textContent);
-    ch.dataset.active=on?'1':'0';
-    ch.classList.toggle('on',on);
-    if(ch.dataset.trigger==="Membrana Timpánica"){
-      const section=ch.closest('.pe-section');
-      const dependent=section.querySelector('[data-subsection="Membrana Timpánica"]');
-      if(dependent){
-        const chips=dependent.querySelectorAll('.chip');
-        if(ch.dataset.active==='1'){
-          chips.forEach(c=>c.classList.remove('disabled'));
-        }else{
-          chips.forEach(c=>{
-            c.classList.add('disabled');
-            c.dataset.active='0';
-            c.classList.remove('on');
-          });
-        }
-      }
-    }
-  });
-}
-
 function makePEPanels(){
   const peList=document.createElement('div');
   Object.entries(window.CIMA_DATA.PHYSICAL_EXAM).forEach(([mainSection,subsections])=>{
@@ -502,12 +521,8 @@ function updateIndicacionesSection(card){
   });
   dropdownsContainer.innerHTML='';
   if(!card.indicacionesData)card.indicacionesData={};
-  
-  const currentMeds=new Set();
-
   Object.entries(selectedByGroup).forEach(([groupName,meds])=>{
     meds.forEach(medName=>{
-      currentMeds.add(medName);
       const medDiv=document.createElement('div');
       medDiv.style.marginBottom='6px';
       medDiv.innerHTML=`<div class="small" style="color:#666;margin-bottom:2px">${medName}</div><select class="form-select indicacion-select" data-med="${medName}" data-group="${groupName}"><option value="">-- Seleccione indicación --</option></select>`;
@@ -518,8 +533,6 @@ function updateIndicacionesSection(card){
         opt.textContent=ind;
         select.appendChild(opt);
       });
-      
-      // Restaurar valor guardado o establecer el primero por defecto
       if(card.indicacionesData[medName]){
         select.value=card.indicacionesData[medName];
       }else{
@@ -533,14 +546,6 @@ function updateIndicacionesSection(card){
       dropdownsContainer.appendChild(medDiv);
     });
   });
-
-  // Limpiar indicacionesData de medicamentos que ya no están seleccionados
-  Object.keys(card.indicacionesData).forEach(med => {
-    if (!currentMeds.has(med)) {
-      delete card.indicacionesData[med];
-    }
-  });
-
   updateIndicacionesTextbox(card);
 }
 
@@ -600,7 +605,7 @@ function mountPatientForm(){
       <div class="col" style="flex:0 1 140px"><label class="form-label">Estado</label><input id="state" class="form-input form-input-small"></div>
       <div class="col" style="flex:0 1 140px"><label class="form-label">País</label><input id="country" class="form-input form-input-small" value="Venezuela"></div>
     </div>`;
-  $("#has_seguro")?.addEventListener('change',(e)=>$("#seguro_box")?.classList.toggle('visible',e.target.checked));
+  $("#has_seguro").addEventListener('change',(e)=>$("#seguro_box").classList.toggle('visible',e.target.checked));
 }
 function visitCard(type='Primera'){
   const cardId='visit-'+(++visitIdCounter);
@@ -644,13 +649,6 @@ function visitCard(type='Primera'){
       peWrap.classList.add('hidden');
     }
   });
-  wrap.addEventListener('chip-toggle', (ev) => {
-    // Si cualquier chip de PE cambia, se regenera el PE en el informe
-    if (ev.target.closest('.pe-panels')) {
-      if(currentPreviewCard===wrap && currentPreviewDoc==='INF') openDoc('INF', wrap);
-    }
-  });
-
   const sp=wrap.querySelector('.study-picker');
   const spWrap=wrap.querySelector('.study-panels-wrap');
   const spPanels=wrap.querySelector('.studies-panels');
@@ -676,12 +674,12 @@ function visitCard(type='Primera'){
     });
     sp.appendChild(c);
   });
-  wrap.querySelector('.btn-inf')?.addEventListener('click',()=>{
+  wrap.querySelector('.btn-inf').addEventListener('click',()=>{
     wrap.querySelector('.doc-badge-inf')?.classList.remove('hidden');
     if(currentPreviewDoc==='INF'&&currentPreviewCard===wrap)closePreview();
     else openDoc('INF',wrap);
   });
-  wrap.querySelector('.btn-rp')?.addEventListener('click',()=>{
+  wrap.querySelector('.btn-rp').addEventListener('click',()=>{
     wrap.querySelector('.doc-badge-rp')?.classList.remove('hidden');
     if(currentPreviewDoc==='RP'&&currentPreviewCard===wrap)closePreview();
     else openDoc('RP',wrap);
@@ -699,13 +697,7 @@ function patientLine(){
 }
 
 function collectPE(card){
-  // Solo recoge datos si el toggle está activo y los paneles no están ocultos
-  const peToggle = card.querySelector('.pe-toggle');
-  const pePanels = card.querySelector('.pe-panels');
-
-  if (!peToggle?.checked || pePanels?.classList.contains('hidden')) return '';
-
-  const panels=Array.from(pePanels.querySelectorAll('.pe-section'));
+  const panels=Array.from(card.querySelectorAll('.pe-panels .pe-section')).filter(p=>p.isConnected&&!p.closest('.pe-panels').classList.contains('hidden'));
   if(!panels.length)return'';
   const results=[];
   panels.forEach(section=>{
@@ -715,7 +707,6 @@ function collectPE(card){
     subsections.forEach(subsec=>{
       const subsecName=subsec.querySelector('.small')?.textContent||'';
       const chips=[...subsec.querySelectorAll('.chip.on:not(.disabled)')].map(c=>c.textContent);
-      // Solo incluye subsección si tiene chips seleccionados
       if(chips.length>0)subsecResults.push(`${subsecName}: ${chips.join(', ')}`);
     });
     if(subsecResults.length>0)results.push(`${sectionName} - ${subsecResults.join(' | ')}`);
@@ -743,7 +734,7 @@ function buildReportHTML(card){
   const hab=(card.querySelector('.txt-hab')?.value||'').trim();
   const dx=(card.querySelector('.txt-dx')?.value||'').trim();
   const plan=(card.querySelector('.txt-plan')?.value||'').trim();
-  const pe=collectPE(card); // Corregido: Ahora solo recoge si está activo
+  const pe=collectPE(card);
   const studies=collectStudies(card);
   const hasHF=TPL['header-inf']||TPL['footer-inf'];
   return`<div class="doc-page doc-letter">${TPL['header-inf']?`<div class="doc-header"><img src="${TPL['header-inf']}"></div>`:''}<div class="doc-wrap ${hasHF?'has-hf':''}" id="docWrapINF" contenteditable="true"><div class="kv2"><div>${patientLine()}</div><div class="small">${fmtDateTime(date)}</div></div><div class="doc-title">INFORME MÉDICO - OTORRINOLARINGOLOGÍA</div>${ea?`<div class="kv2-line" style="white-space:pre-wrap;margin-top:2px">${ea}</div>`:''}${motivo?`<div class="kv2-line"><span class="kv">Motivo:</span> ${motivo}</div>`:''}${ap?`<div class="kv2-line"><span class="kv">Antecedentes personales:</span> ${ap}</div>`:''}${af?`<div class="kv2-line"><span class="kv">Antecedentes familiares:</span> ${af}</div>`:''}${hab?`<div class="kv2-line"><span class="kv">Hábitos psicobiológicos:</span> ${hab}</div>`:''}${pe?`<div class="kv2-line" style="margin-top:4px"><span class="kv">Examen físico:</span> <span style="white-space:pre-wrap">${pe}</span></div>`:''}${studies?`<div style="margin-top:4px"><span class="kv">Estudios realizados:</span><ul class="compact">${studies}</ul></div>`:''}${dx?`<div class="kv2-line" style="margin-top:6px"><span class="kv">Diagnóstico:</span> ${dx}</div>`:''}${plan?`<div class="kv2-line"><span class="kv">Plan / Tratamiento:</span> ${plan}</div>`:''}<div class="doc-sign" id="sigContainerInf"></div></div>${TPL['footer-inf']?`<div class="doc-footer"><img src="${TPL['footer-inf']}"></div>`:''}</div>`;
@@ -772,8 +763,7 @@ function mountFirma(){
 }
 
 function applyZoom(){
-  const z=$("#zoomRange")?.value;
-  if(!z)return;
+  const z=$("#zoomRange").value;
   $("#zoomVal").textContent=z+'%';
   const pv=$("#docPreview");
   if(pv){
@@ -804,67 +794,191 @@ $("#btnSigToggle")?.addEventListener('click',()=>{USE_SIG=!USE_SIG;mountFirma()}
 $("#zoomRange")?.addEventListener('input',applyZoom);
 $("#btnRefresh")?.addEventListener('click',()=>{if(currentPreviewCard&&currentPreviewDoc){openDoc(currentPreviewDoc,currentPreviewCard);flash('Preview actualizado')}});
 
-$("#btnPrint")?.addEventListener('click', async ()=>{
-  const docPage = $("#docPreview .doc-page");
-  if(!docPage){
-    showErr('No hay documento para exportar');
+$("#btnPrint")?.addEventListener('click', ()=>{
+  if(!currentPreviewDoc || !currentPreviewCard){
+    showErr('Primero genera un preview');
+    return;
+  }
+  $('#exportModal').classList.add('active');
+});
+
+$('#btnCancelExport')?.addEventListener('click', ()=>{
+  $('#exportModal').classList.remove('active');
+});
+
+$('#btnDoExport')?.addEventListener('click', async ()=>{
+  const doDownload = $("#exportDownload").checked;
+  const doEmail = $("#exportEmail").checked;
+  const doWhatsApp = $("#exportWhatsApp").checked;
+  
+  if(!doDownload && !doEmail && !doWhatsApp){
+    showErr('Seleccione al menos una opción');
     return;
   }
   
   try {
-    flash('Generando imagen de alta calidad...');
+    $("#exportStatus").textContent = 'Generando imagen...';
+    $("#btnDoExport").disabled = true;
     
-    const originalZoom = $("#zoomRange")?.value || 60;
-    $("#zoomRange").value = 100;
-    applyZoom();
-    await new Promise(resolve => setTimeout(resolve, 400));
+    const docType = currentPreviewDoc === 'INF' ? 'Informe' : 'Receta';
+    const html = currentPreviewDoc === 'INF' ? buildReportHTML(currentPreviewCard) : buildRecipeHTML(currentPreviewCard);
     
-    const originalFilter = docPage.style.filter;
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    document.body.appendChild(tempDiv);
+    
+    const docPage = tempDiv.querySelector('.doc-page');
     docPage.style.filter = 'none';
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise(resolve => setTimeout(resolve, 300));
     
     const canvas = await html2canvas(docPage, {
       scale: 2,
       useCORS: true,
       allowTaint: true,
       backgroundColor: '#ffffff',
-      logging: false,
-      removeContainer: true,
-      imageTimeout: 0,
-      onclone: (clonedDoc) => {
-        const cloned = clonedDoc.querySelector('.doc-page');
-        if(cloned) {
-          cloned.style.filter = 'none';
-          cloned.style.transform = 'none';
-          cloned.style.position = 'relative';
-        }
-      }
+      logging: false
     });
     
-    docPage.style.filter = originalFilter;
-    $("#zoomRange").value = originalZoom;
-    applyZoom();
+    document.body.removeChild(tempDiv);
+    
+    const imgData = canvas.toDataURL('image/png', 1.0);
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imgData;
+    });
+    
+    $("#exportStatus").textContent = 'Convirtiendo a PDF...';
+    
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'letter',
+      compress: true
+    });
+    
+    const pageWidth = 215.9;
+    const pageHeight = 279.4;
+    
+    const processCanvas = document.createElement('canvas');
+    const ctx = processCanvas.getContext('2d');
+    
+    const isHorizontal = img.width > img.height;
+    
+    const maxSize = 1000;
+    let width = img.width;
+    let height = img.height;
+    
+    if (width > height && width > maxSize) {
+      height = (height * maxSize) / width;
+      width = maxSize;
+    } else if (height > maxSize) {
+      width = (width * maxSize) / height;
+      height = maxSize;
+    }
+    
+    if (isHorizontal) {
+      processCanvas.width = height;
+      processCanvas.height = width;
+      ctx.translate(height / 2, width / 2);
+      ctx.rotate(90 * Math.PI / 180);
+      ctx.drawImage(img, -width / 2, -height / 2, width, height);
+    } else {
+      processCanvas.width = width;
+      processCanvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+    }
+    
+    const compressed = processCanvas.toDataURL('image/jpeg', 0.7);
+    
+    const imgRatio = processCanvas.width / processCanvas.height;
+    const pageRatio = pageWidth / pageHeight;
+    
+    let finalWidth, finalHeight;
+    if (imgRatio > pageRatio) {
+      finalWidth = pageWidth;
+      finalHeight = pageWidth / imgRatio;
+    } else {
+      finalHeight = pageHeight;
+      finalWidth = pageHeight * imgRatio;
+    }
+    
+    const x = (pageWidth - finalWidth) / 2;
+    const y = (pageHeight - finalHeight) / 2;
+    
+    pdf.addImage(compressed, 'JPEG', x, y, finalWidth, finalHeight);
     
     const patientId = $("#patient_id")?.value || 'SinID';
-    const tipo = currentPreviewDoc || 'DOC';
-    const fecha = new Date().toISOString().slice(0,10).replace(/-/g,'');
-    const filename = `${patientId}-${tipo}-${fecha}.png`;
+    const now = new Date();
+    const fecha = `${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
+    const filename = `${patientId}-${docType}-${fecha}.pdf`;
     
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      flash(`✓ Descargado: ${filename}`);
-    }, 'image/png', 1.0);
+    if(doDownload){
+      pdf.save(filename);
+      flash(`✓ PDF descargado: ${filename}`);
+    }
+    
+    let pdfUrl = null;
+    
+    if(doEmail || doWhatsApp){
+      $("#exportStatus").textContent = 'Subiendo a la nube...';
+      const pdfBlob = pdf.output('blob');
+      const supabaseFilename = `${patientId}/${docType}-${fecha}-${Date.now()}.pdf`;
+      
+      const { data, error } = await supabase.storage
+        .from('documentos-medicos')
+        .upload(supabaseFilename, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: true
+        });
+      
+      if (error) throw error;
+      
+      const { data: urlData } = supabase.storage
+        .from('documentos-medicos')
+        .createSignedUrl(supabaseFilename, 86400);
+      
+      pdfUrl = urlData.signedUrl;
+    }
+    
+    if(doWhatsApp && pdfUrl){
+      const phone = $("#phone")?.value?.trim();
+      if(phone){
+        const nombre = $("#full_name")?.value || 'Paciente';
+        const mensaje = `Estimado/a ${nombre}, adjunto documento de su consulta:\n\n${docType}: ${pdfUrl}`;
+        const phoneClean = phone.replace(/[^0-9]/g, '');
+        const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+        window.open(whatsappUrl, '_blank');
+        flash('WhatsApp abierto con link PDF');
+      }else{
+        showErr('No hay teléfono registrado para WhatsApp');
+      }
+    }
+    
+    if(doEmail && pdfUrl){
+      const email = $("#email")?.value?.trim();
+      if(email){
+        const mensaje = `Estimado/a ${$("#full_name")?.value || 'Paciente'},\n\nAdjunto documento de su consulta:\n\n${docType}: ${pdfUrl}\n\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
+        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent('Documentos médicos - Consulta')}&body=${encodeURIComponent(mensaje)}`;
+        window.open(mailtoLink, '_blank');
+        flash('Email preparado con link PDF');
+      }else{
+        showErr('No hay email registrado');
+      }
+    }
+    
+    $('#exportModal').classList.remove('active');
     
   } catch(err) {
     showErr('Error: ' + err.message);
     console.error(err);
+  } finally {
+    $("#exportStatus").textContent = '';
+    $("#btnDoExport").disabled = false;
   }
 });
 function serializeCurrentState(){
@@ -882,7 +996,6 @@ function serializeCurrentState(){
     state:$('#state')?.value||'',
     country:$('#country')?.value||''
   };
-
   const visits=[];
   $$('.visit-card').forEach((card,i)=>{
     const vdata={
@@ -898,49 +1011,14 @@ function serializeCurrentState(){
       hab:card.querySelector('.txt-hab')?.value||'',
       dx_text:card.querySelector('.txt-dx')?.value||'',
       dx_chips:[...card.querySelectorAll('.chips-dx .chip.on')].map(c=>c.textContent),
-
-      // Examen Físico (PE)
-      pe_enabled: card.querySelector('.pe-toggle')?.checked || false,
-      pe_chips: (()=>{
-          const peData = {};
-          const peToggle = card.querySelector('.pe-toggle');
-          // Solo serializa si está activado
-          if(peToggle?.checked){
-              card.querySelectorAll('.pe-subsection').forEach(subsec => {
-                  // Encuentra la subsección por el atributo data-subsection, si existe
-                  const subName = subsec.querySelector('.pe-chips')?.dataset.subsection || subsec.querySelector('.small')?.textContent;
-                  const chips = [...subsec.querySelectorAll('.chip.on:not(.disabled)')].map(c=>c.textContent);
-                  if(chips.length > 0 && subName) peData[subName] = chips;
-              });
-          }
-          return peData;
-      })(),
-
-      // RECIPE / INDICACIONES / PLAN
       recipe_text:card.querySelector('.txt-recipe')?.value||'',
+      recipe_chips:[...card.querySelectorAll('.recipe-chips-group .chip.on')].map(c=>c.textContent),
       indicaciones_text:card.querySelector('.txt-indicaciones')?.value||'',
+      indicaciones_data:card.indicacionesData||{},
       plan_text:card.querySelector('.txt-plan')?.value||'',
-
-      recipe_chips_by_group:(()=>{
-        const obj={};
-        card.querySelectorAll('.recipe-chips-group').forEach(g=>{
-          const group=g.dataset.group;
-          const sel=[...g.querySelectorAll('.chip.on')].map(c=>c.textContent);
-          if(sel.length)obj[group]=sel;
-        });
-        return obj;
-      })(),
-
-      indicaciones_map: (card.indicacionesData && typeof card.indicacionesData==='object')
-        ? {...card.indicacionesData}
-        : {},
-
-      // Estudios
       studies:[]
     };
-    
-    const spPanels=card.querySelector('.studies-panels');
-    vdata.studies=$$('.study-panel',spPanels).map(panel=>{
+    card.querySelectorAll('.studies-panels .study-panel').forEach(panel=>{
       const studyData={
         name:panel.dataset.studyName,
         conclusion:panel.querySelector('.study-concl-input')?.value||'',
@@ -951,45 +1029,29 @@ function serializeCurrentState(){
         const selected=[...g.querySelectorAll('.chip.on')].map(c=>c.textContent);
         if(selected.length)studyData.groups[groupName]=selected;
       });
-      return studyData;
+      vdata.studies.push(studyData);
     });
-
     visits.push(vdata);
   });
-
-  return {patient,visits,timestamp:new Date().toISOString()};
+  return{patient,visits,timestamp:new Date().toISOString()};
 }
 
 async function saveToSupabase(){
   try{
     const data=serializeCurrentState();
     if(!data.patient.patient_id||!data.patient.full_name){showErr('Complete ID y nombre del paciente');return}
-    
-    // 1. Guardar o actualizar paciente
-    const patientDataToSave = {...data.patient, updated_at: new Date().toISOString()};
-    const{data:existingPatient,error:selectError}=await supabase.from('pacientes').select('id').eq('patient_id',data.patient.patient_id).single();
-    if(selectError && selectError.code!=='PGRST116'){ // PGRST116 = No Rows Found
-      throw selectError;
-    }
-
+    const{data:existingPatient}=await supabase.from('pacientes').select('id').eq('patient_id',data.patient.patient_id).single();
     let pacienteId;
     if(existingPatient){
-      const {error: updateError} = await supabase.from('pacientes').update(patientDataToSave).eq('id',existingPatient.id);
-      if(updateError) throw updateError;
+      await supabase.from('pacientes').update({...data.patient,updated_at:new Date().toISOString()}).eq('id',existingPatient.id);
       pacienteId=existingPatient.id;
-      // 2. Eliminar consultas antiguas antes de insertar las nuevas
-      const {error: deleteError} = await supabase.from('consultas').delete().eq('paciente_id',pacienteId);
-      if(deleteError) throw deleteError;
+      await supabase.from('consultas').delete().eq('paciente_id',pacienteId);
     }else{
-      const{data:newPatient,error:insertError}=await supabase.from('pacientes').insert([patientDataToSave]).select().single();
-      if(insertError) throw insertError;
+      const{data:newPatient}=await supabase.from('pacientes').insert([data.patient]).select().single();
       pacienteId=newPatient.id;
     }
-    
-    // 3. Insertar todas las consultas
     for(const visit of data.visits){
-      const {error: visitInsertError} = await supabase.from('consultas').insert([{paciente_id:pacienteId, tipo:visit.type, fecha:visit.date, datos:visit}]);
-      if(visitInsertError) throw visitInsertError;
+      await supabase.from('consultas').insert([{paciente_id:pacienteId,tipo:visit.type,fecha:visit.date,datos:visit}]);
     }
     flash('Historia guardada en Supabase');
   }catch(err){showErr('Error guardando: '+err.message);console.error('Supabase save error:',err)}
@@ -1075,131 +1137,56 @@ function downloadJSON(data,filename){
 
 setInterval(autoSaveToLocalStorage,120000);
 
-// MODIFICACIÓN CLAVE AQUÍ: AÑADIMOS VALIDACIÓN DE EXISTENCIA DE ELEMENTOS
 function bindToolbar(){
-  // Aseguramos que todos los botones existen antes de enlazar los eventos
-  if (!$("#btnNew") || !$("#btnAddConsulta") || !$("#btnDeleteLast") || !$("#btnClose") || !$("#btnOpen") || !$("#btnTpl")) {
-      console.warn('Advertencia: No todos los botones de la barra de herramientas se encontraron en el DOM. Reintente la carga.');
-      // Opcionalmente, puedes usar un setTimeout para reintentar si el DOM no está listo
-      return; 
-  }
-
-
-  $("#btnNew").addEventListener('click',()=>{
+  $("#btnNew")?.addEventListener('click',()=>{
     if(!confirm('¿Crear nueva historia médica? Se perderán los datos no guardados.'))return;
     $("#visitsContainer").innerHTML='';
     $("#patientForm")?.classList.remove('hidden');
-    $('#patient_id').value='';$('#full_name').value='';$('#birthdate').value='';$('#sex').value='';$('#ocupacion').value='';
-    $('#has_seguro').checked=false;$('#seguro_company').value='';$('#seguro_box')?.classList.remove('visible');
-    $('#email').value='';$('#phone').value='';$('#city').value='';$('#state').value='';$('#country').value='Venezuela';
+    $('#patient_id').value='';$('#full_name').value='';$('#birthdate').value='';$('#sex').value='';$('#ocupacion').value='';$('#has_seguro').checked=false;$('#seguro_company').value='';$('#seguro_box')?.classList.remove('visible');$('#email').value='';$('#phone').value='';$('#city').value='';$('#state').value='';$('#country').value='Venezuela';
     closePreview();
     visitIdCounter=0;
     localStorage.removeItem('CIMA_autosave');
     flash('Nueva historia médica iniciada');
   });
-
-  $("#btnAddConsulta").addEventListener('click',()=>{
+  $("#btnAddConsulta")?.addEventListener('click',()=>{
     const pid=$("#patient_id")?.value.trim();
     const name=$("#full_name")?.value.trim();
     if(!pid||!name){showErr('Complete al menos ID y nombre del paciente');return}
     if(!validatePatientId(pid)){showErr('ID debe tener formato: Letra(s)-Número (ej: V-12345)');return}
-
     const existingCards=$$('.visit-card');
-
     if(existingCards.length===0){
-      // Primera
       const v=visitCard('Primera');
       $("#visitsContainer").appendChild(v);
       flash('Primera consulta creada');
     }else{
-      // Sucesiva (heredar datos de la última consulta)
-      const first=existingCards[existingCards.length-1]; // Usar la ÚLTIMA como referencia
+      const first=existingCards[0];
       const v=visitCard('Sucesiva');
-
-      // helpers de copia
       const copyVal=sel=>first.querySelector(sel)?.value||'';
       const set=(sel,val)=>{const el=v.querySelector(sel);if(el){el.value=val;el.dataset.freeText=val}};
-      const copyChips=(from,to)=>{
-        const labels=[...first.querySelectorAll(from+' .chip.on')].map(c=>c.textContent);
-        v.querySelectorAll(to+' .chip').forEach(ch=>{
-          const on=labels.includes(ch.textContent);
-          ch.dataset.active=on?'1':'0';
-          ch.classList.toggle('on',on);
-        });
-      };
-
-      // 1) copiar textos clínicos base
-      set('.txt-ea', copyVal('.txt-ea'));
-      set('.txt-ap', copyVal('.txt-ap'));
-      set('.txt-af', copyVal('.txt-af'));
-      set('.txt-hab', copyVal('.txt-hab'));
-      set('.txt-dx', copyVal('.txt-dx'));
-
-      // 2) copiar chips clínicos base (Motivo/AP/AF/DX)
+      set('.txt-ea',copyVal('.txt-ea'));
+      set('.txt-ap',copyVal('.txt-ap'));
+      set('.txt-af',copyVal('.txt-af'));
+      set('.txt-hab',copyVal('.txt-hab'));
+      set('.txt-dx',copyVal('.txt-dx'));
+      set('.txt-recipe',copyVal('.txt-recipe'));
+      set('.txt-indicaciones',copyVal('.txt-indicaciones'));
+      set('.txt-plan',copyVal('.txt-plan'));
+      const copyChips=(from,to)=>{const labels=[...first.querySelectorAll(from+' .chip.on')].map(c=>c.textContent);v.querySelectorAll(to+' .chip').forEach(ch=>{const on=labels.includes(ch.textContent);ch.dataset.active=on?'1':'0';ch.classList.toggle('on',on)})};
       copyChips('.chips-motivo','.chips-motivo');
       copyChips('.chips-ap','.chips-ap');
       copyChips('.chips-af','.chips-af');
       copyChips('.chips-dx','.chips-dx');
-
-      // 3) Heredar Examen Físico (PE)
-      const peToggleFirst = first.querySelector('.pe-toggle');
-      const peToggleNew = v.querySelector('.pe-toggle');
-      if (peToggleFirst?.checked) {
-          peToggleNew.checked = true;
-          peToggleNew.dispatchEvent(new Event('change')); // Monta los paneles PE
-
-          // Copiar chips de PE
-          first.querySelectorAll('.pe-subsection').forEach(subsecFirst => {
-              const subName = subsecFirst.querySelector('.pe-chips')?.dataset.subsection || subsecFirst.querySelector('.small')?.textContent;
-              if (!subName) return;
-              
-              const chipsFirst = [...subsecFirst.querySelectorAll('.chip.on:not(.disabled)')].map(c => c.textContent);
-              const subsecNew = v.querySelector(`.pe-chips[data-subsection="${subName}"]`);
-
-              if (subsecNew) {
-                  // Restaurar chips y manejar el chip 'Membrana Timpánica'
-                  setChipsByLabels(subsecNew, chipsFirst);
-              }
-          });
+      copyChips('.recipe-chips-group','.recipe-chips-group');
+      if(first.indicacionesData){
+        v.indicacionesData={...first.indicacionesData};
+        updateIndicacionesSection(v);
       }
-
-      // 4) Heredar RP / Indicaciones / Plan
-      // 4.1 textos
-      set('.txt-recipe',       copyVal('.txt-recipe'));
-      set('.txt-indicaciones', copyVal('.txt-indicaciones'));
-      set('.txt-plan',         copyVal('.txt-plan'));
-
-      // 4.2 chips de receta por grupo (medicamentos seleccionados)
-      v.querySelectorAll('.recipe-chips-group').forEach(group=>{
-        const groupName=group.dataset.group;
-        const selectedInFirst=[...first.querySelectorAll(`.recipe-chips-group[data-group="${groupName}"] .chip.on`)]
-          .map(c=>c.textContent);
-        group.querySelectorAll('.chip').forEach(ch=>{
-          const on=selectedInFirst.includes(ch.textContent);
-          ch.dataset.active=on?'1':'0';
-          ch.classList.toggle('on',on);
-        });
-      });
-
-      // 4.3 mapa de indicaciones (combos) y reconstrucción UI
-      v.indicacionesData={...(first.indicacionesData||{})};
-      updateIndicacionesSection(v); // repinta combos según chips activos en v
-
-      // 4.4 bloquear auto-generado para no pisar lo heredado
-      const lock=(sel)=>{const el=v.querySelector(sel);if(el&&el.value){el.dataset.userEdited='1'}};
-      lock('.txt-recipe');
-      lock('.txt-indicaciones');
-      lock('.txt-plan');
-
-      // montar card
       $("#visitsContainer").appendChild(v);
-      flash('Consulta sucesiva agregada');
+      flash('Consulta sucesiva agregada con datos heredados');
     }
-
     autoSaveToLocalStorage();
   });
-
-  $("#btnDeleteLast").addEventListener('click',()=>{
+  $("#btnDeleteLast")?.addEventListener('click',()=>{
     const cards=$$('.visit-card');
     if(cards.length===0){showErr('No hay consultas para eliminar');return}
     if(cards.length===1){showErr('No se puede eliminar la única consulta');return}
@@ -1211,8 +1198,7 @@ function bindToolbar(){
       autoSaveToLocalStorage();
     }
   });
-
-  $("#btnClose").addEventListener('click',async()=>{
+  $("#btnClose")?.addEventListener('click',async()=>{
     const data=serializeCurrentState();
     const hasData=data.patient.patient_id||data.patient.full_name;
     if(hasData){
@@ -1234,11 +1220,18 @@ function bindToolbar(){
       flash('Historia cerrada');
     }
   });
-
-  $("#btnOpen").addEventListener('click',()=>openSearchModal());
-  $("#btnTpl").addEventListener('click',()=>flash('Las plantillas de Valentina se cargan automáticamente desde GitHub Pages'));
+  $("#btnOpen")?.addEventListener('click',()=>openSearchModal());
+  $("#btnTpl")?.addEventListener('click',()=>flash('Las plantillas de Valentina se cargan automáticamente desde GitHub Pages'));
 }
 
+function setChipsByLabels(container,labels){
+  const set=new Set(labels||[]);
+  container.querySelectorAll('.chip').forEach(ch=>{
+    const on=set.has(ch.textContent);
+    ch.dataset.active=on?'1':'0';
+    ch.classList.toggle('on',on);
+  });
+}
 
 function ensureStudyPanel(card,name){
   const chipBtn=[...card.querySelectorAll('.study-picker .chip')].find(c=>c.textContent===name);
@@ -1247,159 +1240,119 @@ function ensureStudyPanel(card,name){
 }
 
 function renderHCFromJSON(data){
-  if(!data)return;
-  const {patient,visits}=data;
-
-  // --- Paciente ---
-  $('#patient_id').value=patient.patient_id||'';
-  $('#full_name').value=patient.full_name||'';
-  $('#birthdate').value=patient.birthdate||'';
-  $('#sex').value=patient.sex||'';
-  $('#ocupacion').value=patient.ocupacion||'';
-  $('#has_seguro').checked=patient.has_seguro||false;
-  $('#seguro_company').value=patient.seguro_company||'';
-  $('#email').value=patient.email||'';
-  $('#phone').value=patient.phone||'';
-  $('#city').value=patient.city||'';
-  $('#state').value=patient.state||'';
-  $('#country').value=patient.country||'Venezuela';
-  $('#seguro_box').classList.toggle('visible',$('#has_seguro').checked);
-  $("#patientForm")?.classList.remove('hidden'); // Asegura que el formulario del paciente sea visible
-
   $("#visitsContainer").innerHTML='';
-  visitIdCounter=0;
-
-  visits.forEach(vdata=>{
-    const card=visitCard(vdata.type||'Primera');
-    
-    // Función helper para restaurar chips
-    const restoreChips=(container,arr)=>{
-      if(!arr)return;
-      setChipsByLabels(container, arr);
-      
-      // Si el contenedor es de PE, dispara el toggle para los dependientes
-      if(container.closest('.pe-subsection')){
-          const triggerChip = container.querySelector('[data-trigger="Membrana Timpánica"]');
-          if(triggerChip && triggerChip.dataset.active==='1'){
-             triggerChip.dispatchEvent(new CustomEvent('chip-toggle',{bubbles:true}));
-          }
-      }
-    };
-    
-    // --- Campos básicos y chips de Motivo/AP/AF/DX ---
-    card.querySelector('.visit-date').value=vdata.date||'';
-    card.querySelector('.txt-ea').value=vdata.ea||'';
-    card.querySelector('.txt-motivo').value=vdata.motivo_libre||'';
-    card.querySelector('.txt-ap').value=vdata.ap_text||'';
-    card.querySelector('.txt-af').value=vdata.af_text||'';
-    card.querySelector('.txt-hab').value=vdata.hab||'';
-    card.querySelector('.txt-dx').value=vdata.dx_text||'';
-
-    restoreChips(card.querySelector('.chips-motivo'),vdata.motivos);
-    restoreChips(card.querySelector('.chips-ap'),vdata.ap_chips);
-    restoreChips(card.querySelector('.chips-af'),vdata.af_chips);
-    restoreChips(card.querySelector('.chips-dx'),vdata.dx_chips);
-    
-    // --- Examen Físico (PE) ---
-    const peToggle=card.querySelector('.pe-toggle');
-    if(vdata.pe_enabled){
-        peToggle.checked=true;
-        peToggle.dispatchEvent(new Event('change')); // Activa el toggle y monta los paneles PE
-        
-        if(vdata.pe_chips){
-            // Restaurar chips de PE en los paneles recién montados
-            Object.entries(vdata.pe_chips).forEach(([subName,chips])=>{
-                const peChipsContainer=card.querySelector(`.pe-chips[data-subsection="${subName}"]`);
-                if(peChipsContainer)restoreChips(peChipsContainer,chips);
-            });
-        }
-    }
-
-
-    // --- RP / Indicaciones / Plan ---
-    // Chips de receta por grupo
-    if(vdata.recipe_chips_by_group){
-      Object.entries(vdata.recipe_chips_by_group).forEach(([groupName,meds])=>{
-        const group=card.querySelector(`.recipe-chips-group[data-group="${groupName}"]`);
-        if(group)restoreChips(group,meds);
-      });
-      // Restaurar el texto del récipe (opcional, si se editó a mano)
-      updateRecipeTextbox(card);
-    }
-
-    // Mapa de indicaciones y combos
-    card.indicacionesData={...(vdata.indicaciones_map||{})};
-    updateIndicacionesSection(card); // Reconstruye los combos y les asigna el valor guardado.
-
-    // Textos de RP / Indicaciones / Plan (finales)
-    const setTxt=(sel,val)=>{
-      const el=card.querySelector(sel);
-      if(el&&typeof val==='string'){
-        el.value=val;
-        if(val.trim()){
-           el.dataset.userEdited='1'; // Bloquea la auto-generación para mantener el valor guardado
-        }
-      }
-    };
-    setTxt('.txt-recipe',vdata.recipe_text);
-    setTxt('.txt-indicaciones',vdata.indicaciones_text);
-    setTxt('.txt-plan',vdata.plan_text);
-    
-    // --- Estudios ---
-    if(vdata.studies&&Array.isArray(vdata.studies)){
-      const spWrap=card.querySelector('.study-panels-wrap');
-      vdata.studies.forEach(st=>{
-        const chipBtn=[...card.querySelectorAll('.study-picker .chip')].find(c=>c.textContent===st.name);
-        if(chipBtn)chipBtn.click(); // Asegura que el panel se monte
-        
-        const panel=[...card.querySelectorAll('.studies-panels .study-panel')].find(p=>p.dataset.studyName===st.name);
-
-        if(panel){
-             panel.querySelector('.study-concl-input').value=st.conclusion||'';
-             // Restaurar chips de estudio
-             if(st.groups){
-                Object.entries(st.groups).forEach(([groupName, chips])=>{
-                    const groupContainer = [...panel.querySelectorAll('.study-group')].find(g=>g.querySelector('.g-title').textContent === groupName);
-                    if(groupContainer) restoreChips(groupContainer.querySelector('.chips'), chips);
-                });
-            }
-        }
-      });
-      if(vdata.studies.length)spWrap.classList.remove('hidden');
-    }
-
+  $("#patientForm")?.classList.remove('hidden');
+  const p=data.patient||{};
+  $('#patient_id').value=p.patient_id||'';
+  $('#full_name').value=p.full_name||'';
+  $('#birthdate').value=p.birthdate||'';
+  $('#sex').value=p.sex||'';
+  $('#ocupacion').value=p.ocupacion||'';
+  $('#has_seguro').checked=p.has_seguro||false;
+  $('#seguro_company').value=p.seguro_company||'';
+  if(p.has_seguro)$('#seguro_box')?.classList.add('visible');
+  $('#email').value=p.email||'';
+  $('#phone').value=p.phone||'';
+  $('#city').value=p.city||'';
+  $('#state').value=p.state||'';
+  $('#country').value=p.country||'';
+  const visits=Array.isArray(data.visits)?data.visits:[];
+  visits.forEach((vdata,i)=>{
+    const type=vdata.type||(i===0?'Primera':'Sucesiva');
+    const card=visitCard(type);
     $("#visitsContainer").appendChild(card);
-  });
-  
-  flash('Historia médica cargada');
-}
-
-// ----------------------------------------------------
-// LÓGICA DE INICIALIZACIÓN
-// ----------------------------------------------------
-
-// Inicialización de Supabase
-supabase=Supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-flash('Sistema iniciado: Supabase OK');
-mountPatientForm();
-bindToolbar(); // Llama a la función que ahora tiene las validaciones
-
-// Cargar autoguardado si existe
-const saved=localStorage.getItem('CIMA_autosave');
-if(saved){
-    if(confirm('Se encontró una sesión autoguardada. ¿Desea cargarla?')){
-        try{
-            renderHCFromJSON(JSON.parse(saved));
-            flash('Sesión autoguardada cargada');
-        }catch(e){
-            showErr('Error cargando autoguardado: '+e.message);
-            localStorage.removeItem('CIMA_autosave');
+    card.querySelector('.visit-date').value=vdata.date||getLocalDateTime();
+    if(vdata.ea!=null){const ea=card.querySelector('.txt-ea');if(ea)ea.value=vdata.ea||ea.value}
+    const set=(sel,val)=>{const el=card.querySelector(sel);if(el){el.value=val||'';el.dataset.freeText=el.value}};
+    set('.txt-motivo',vdata.motivo_libre);
+    setChipsByLabels(card.querySelector('.chips-motivo'),vdata.motivos||[]);
+    set('.txt-ap',vdata.ap_text);
+    setChipsByLabels(card.querySelector('.chips-ap'),vdata.ap_chips||[]);
+    set('.txt-af',vdata.af_text);
+    setChipsByLabels(card.querySelector('.chips-af'),vdata.af_chips||[]);
+    set('.txt-hab',vdata.hab);
+    if(Array.isArray(vdata.studies)){
+      vdata.studies.forEach(s=>{
+        const panel=ensureStudyPanel(card,s.name);
+        if(!panel)return;
+        if(s.groups){
+          Object.entries(s.groups).forEach(([grp,arr])=>{
+            const g=[...panel.querySelectorAll('.study-group')].find(x=>x.querySelector('.g-title').textContent===grp);
+            if(!g)return;
+            g.querySelectorAll('.chip').forEach(ch=>{
+              const on=(arr||[]).includes(ch.textContent);
+              ch.dataset.active=on?'1':'0';
+              ch.classList.toggle('on',on);
+            });
+          });
         }
+        const ta=panel.querySelector('.study-concl-input');
+        if(ta&&s.conclusion){ta.value=s.conclusion;ta.dataset.userEdited='1'}
+      });
     }
-}else{
-    // Mostrar formulario del paciente al inicio si no hay autoguardado
-    $("#patientForm")?.classList.remove('hidden');
+    set('.txt-dx',vdata.dx_text);
+    setChipsByLabels(card.querySelector('.chips-dx'),vdata.dx_chips||[]);
+    
+    if(vdata.recipe_text){
+      const txtRecipe=card.querySelector('.txt-recipe');
+      if(txtRecipe){
+        txtRecipe.value=vdata.recipe_text;
+        txtRecipe.dataset.userEdited='1';
+      }
+    }
+    if(vdata.recipe_chips){
+      setChipsByLabels(card.querySelector('.recipe-chips-container'),vdata.recipe_chips);
+    }
+    
+    if(vdata.indicaciones_text){
+      const txtIndicaciones=card.querySelector('.txt-indicaciones');
+      if(txtIndicaciones){
+        txtIndicaciones.value=vdata.indicaciones_text;
+        txtIndicaciones.dataset.userEdited='1';
+      }
+    }
+    if(vdata.indicaciones_data){
+      card.indicacionesData=vdata.indicaciones_data;
+      updateIndicacionesSection(card);
+    }
+    
+    if(vdata.plan_text){
+      const txtPlan=card.querySelector('.txt-plan');
+      if(txtPlan){
+        txtPlan.value=vdata.plan_text;
+        txtPlan.dataset.userEdited='1';
+      }
+    }
+  });
 }
+document.addEventListener('DOMContentLoaded',async()=>{
+  try{
+    let attempts=0;
+    while(!window.supabase&&attempts<50){await new Promise(r=>setTimeout(r,100));attempts++}
+    if(window.supabase){
+      supabase=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    }else{
+      showErr('Error cargando Supabase');
+    }
+    mountPatientForm();
+    bindToolbar();
+    bindSearchModal();
+    const autosave=localStorage.getItem('CIMA_autosave');
+    if(autosave){
+      try{
+        const data=JSON.parse(autosave);
+        if(confirm('Autoguardado encontrado. ¿Recuperar?')){
+          renderHCFromJSON(data);
+          flash('Autoguardado recuperado');
+        }else{
+          localStorage.removeItem('CIMA_autosave');
+        }
+      }catch(err){console.error('Error cargando autoguardado:',err)}
+    }
+    flash('Sistema CIMA listo - PDF optimizado + Guardado completo');
+  }catch(ex){showErr('Error al iniciar: '+ex.message)}
+});
+
 })();
 </script>
 </body>
