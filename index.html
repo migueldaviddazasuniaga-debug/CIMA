@@ -87,7 +87,7 @@ ul.compact li{margin:0;padding:0}
 .pe-label{font-size:9pt;font-weight:700;color:#444;margin:4px 0}
 .seguro-box{display:none;margin-top:4px}
 .seguro-box.visible{display:block}
-.btn-ghost{background:#fff;border:1px solid #cfd3e1;border-radius:6px;padding:6px 10px}
+.btn-ghost{background:#fff;border:1px solid #cfd3e1;border-radius:6px;padding:6px 10px;cursor:pointer}
 .btn-ghost+.btn-ghost{margin-left:6px}
 .btn-ghost:hover{background:#f7f9ff}
 .btn-ghost.active{background:#007bff;color:#fff;border-color:#007bff}
@@ -104,16 +104,10 @@ ul.compact li{margin:0;padding:0}
 .modal-body{margin:16px 0}
 .modal-footer{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
 
-.export-option:has(input:checked){border-color:#007bff;background:#f0f7ff}
-.export-option:hover{border-color:#007bff}
+.export-option{display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s;margin-bottom:12px}
+.export-option:hover{border-color:#007bff;background:#f0f7ff}
 
 #printableArea{display:none}
-@media print{
-  body *{visibility:hidden}
-  #printableArea,#printableArea *{visibility:visible}
-  #printableArea{position:absolute;left:0;top:0;width:100%;background:#fff}
-  .doc-page{filter:none!important;margin:0;page-break-after:always}
-}
 </style>
 </head>
 <body>
@@ -177,7 +171,7 @@ ul.compact li{margin:0;padding:0}
         <button id="btnRefresh" class="iconbtn" title="Actualizar preview" style="width:46px;height:46px">
           <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/refrescar.svg" alt="" style="width:26px;height:26px;filter:brightness(0)">
         </button>
-        <button id="btnPrint" class="iconbtn" title="Exportar documento" style="width:46px;height:46px">
+        <button id="btnExport" class="iconbtn" title="Exportar PNG" style="width:46px;height:46px">
           <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/exportar.svg" alt="" style="width:26px;height:26px;filter:brightness(0)">
         </button>
       </div>
@@ -225,50 +219,42 @@ ul.compact li{margin:0;padding:0}
 </div>
 
 <div id="exportModal" class="modal-overlay">
-  <div class="modal-box" style="max-width:400px">
-    <div class="modal-header">Exportar documento</div>
+  <div class="modal-box" style="max-width:450px">
+    <div class="modal-header">PNG descargado exitosamente</div>
     <div class="modal-body">
-      <div style="display:flex;flex-direction:column;gap:16px">
-        
-        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
-          <input type="checkbox" id="exportDownload" checked style="width:20px;height:20px;cursor:pointer">
-          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/descargar.svg" style="width:32px;height:32px;filter:brightness(0)">
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:11pt">Descargar PDF</div>
-            <div class="small" style="color:#666">Guarda en carpeta de descargas</div>
-          </div>
-        </label>
-
-        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
-          <input type="checkbox" id="exportEmail" checked style="width:20px;height:20px;cursor:pointer">
-          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/enviar.svg" style="width:32px;height:32px;filter:brightness(0)">
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:11pt">Enviar por Email</div>
-            <div class="small" style="color:#666">Link con PDF adjunto</div>
-          </div>
-        </label>
-
-        <label style="display:flex;align-items:center;gap:12px;padding:12px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;transition:all .2s" class="export-option">
-          <input type="checkbox" id="exportWhatsApp" style="width:20px;height:20px;cursor:pointer">
-          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/whatsapp.svg" style="width:32px;height:32px;filter:brightness(0)">
-          <div style="flex:1">
-            <div style="font-weight:600;font-size:11pt">Enviar por WhatsApp</div>
-            <div class="small" style="color:#666">Link con PDF adjunto</div>
-          </div>
-        </label>
-
+      <div style="background:#e8f5e9;padding:16px;border-radius:6px;margin-bottom:16px;text-align:center">
+        <div style="font-size:48px;margin-bottom:8px">✓</div>
+        <div style="font-weight:600;font-size:13pt;color:#2e7d32">Imagen guardada en Descargas</div>
+        <div class="small" style="color:#555;margin-top:4px" id="pngFilename"></div>
       </div>
-      <div id="exportStatus" class="small" style="margin-top:16px;color:#666;text-align:center"></div>
+      
+      <div style="border-top:2px solid #e0e0e0;padding-top:16px;margin-top:16px">
+        <div style="font-weight:600;margin-bottom:12px;font-size:11pt">¿Qué deseas hacer ahora?</div>
+        
+        <div class="export-option" onclick="openConverter()">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/convertir.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Convertir PNG → PDF</div>
+            <div class="small" style="color:#666">Abre herramienta de conversión</div>
+          </div>
+        </div>
+
+        <div class="export-option" onclick="$('#exportModal').classList.remove('active')">
+          <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/continuar.svg" style="width:32px;height:32px;filter:brightness(0)">
+          <div style="flex:1">
+            <div style="font-weight:600;font-size:11pt">Continuar trabajando</div>
+            <div class="small" style="color:#666">Cerrar este mensaje</div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
-      <button id="btnCancelExport" class="btn-secondary">Cancelar</button>
-      <button id="btnDoExport" class="btn-primary">Exportar</button>
+      <button id="btnCloseExport" class="btn-secondary">Cerrar</button>
     </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script>
 <script>
@@ -276,6 +262,7 @@ let visitIdCounter=0;
 const CDN_BASE='https://migueldaviddazasuniaga-debug.github.io/CIMA';
 const SUPABASE_URL='https://nfvpzcifcjjpmbpwsnbr.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
+const CONVERTER_URL='https://migueldaviddazasuniaga-debug.github.io/CIMA/convertidor.html';
 
 let supabase;
 const TPL={
@@ -295,6 +282,11 @@ window.toggleVisitBody=function(cardId){
   if(!body||!btn)return;
   body.classList.toggle('hidden');
   btn.textContent=body.classList.contains('hidden')?'►':'▼';
+};
+
+window.openConverter=function(){
+  window.open(CONVERTER_URL,'_blank');
+  flash('Abriendo herramienta de conversión...');
 };
 
 ;(function(){
@@ -794,192 +786,64 @@ $("#btnSigToggle")?.addEventListener('click',()=>{USE_SIG=!USE_SIG;mountFirma()}
 $("#zoomRange")?.addEventListener('input',applyZoom);
 $("#btnRefresh")?.addEventListener('click',()=>{if(currentPreviewCard&&currentPreviewDoc){openDoc(currentPreviewDoc,currentPreviewCard);flash('Preview actualizado')}});
 
-$("#btnPrint")?.addEventListener('click', ()=>{
-  if(!currentPreviewDoc || !currentPreviewCard){
+$("#btnExport")?.addEventListener('click',async()=>{
+  if(!currentPreviewDoc||!currentPreviewCard){
     showErr('Primero genera un preview');
     return;
   }
-  $('#exportModal').classList.add('active');
-});
-
-$('#btnCancelExport')?.addEventListener('click', ()=>{
-  $('#exportModal').classList.remove('active');
-});
-
-$('#btnDoExport')?.addEventListener('click', async ()=>{
-  const doDownload = $("#exportDownload").checked;
-  const doEmail = $("#exportEmail").checked;
-  const doWhatsApp = $("#exportWhatsApp").checked;
   
-  if(!doDownload && !doEmail && !doWhatsApp){
-    showErr('Seleccione al menos una opción');
-    return;
-  }
-  
-  try {
-    $("#exportStatus").textContent = 'Generando imagen...';
-    $("#btnDoExport").disabled = true;
+  try{
+    const docType=currentPreviewDoc==='INF'?'Informe':'Receta';
+    const html=currentPreviewDoc==='INF'?buildReportHTML(currentPreviewCard):buildRecipeHTML(currentPreviewCard);
     
-    const docType = currentPreviewDoc === 'INF' ? 'Informe' : 'Receta';
-    const html = currentPreviewDoc === 'INF' ? buildReportHTML(currentPreviewCard) : buildRecipeHTML(currentPreviewCard);
-    
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
-    tempDiv.style.position = 'absolute';
-    tempDiv.style.left = '-9999px';
+    const tempDiv=document.createElement('div');
+    tempDiv.innerHTML=html;
+    tempDiv.style.position='absolute';
+    tempDiv.style.left='-9999px';
     document.body.appendChild(tempDiv);
     
-    const docPage = tempDiv.querySelector('.doc-page');
-    docPage.style.filter = 'none';
-    await new Promise(resolve => setTimeout(resolve, 300));
+    const docPage=tempDiv.querySelector('.doc-page');
+    docPage.style.filter='none';
+    await new Promise(resolve=>setTimeout(resolve,300));
     
-    const canvas = await html2canvas(docPage, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      backgroundColor: '#ffffff',
-      logging: false
+    const canvas=await html2canvas(docPage,{
+      scale:2,
+      useCORS:true,
+      allowTaint:true,
+      backgroundColor:'#ffffff',
+      logging:false
     });
     
     document.body.removeChild(tempDiv);
     
-    const imgData = canvas.toDataURL('image/png', 1.0);
-    const img = new Image();
-    await new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-      img.src = imgData;
-    });
+    const patientId=$("#patient_id")?.value||'SinID';
+    const now=new Date();
+    const fecha=`${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
+    const filename=`${patientId}-${docType}-${fecha}.png`;
     
-    $("#exportStatus").textContent = 'Convirtiendo a PDF...';
-    
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'letter',
-      compress: true
-    });
-    
-    const pageWidth = 215.9;
-    const pageHeight = 279.4;
-    
-    const processCanvas = document.createElement('canvas');
-    const ctx = processCanvas.getContext('2d');
-    
-    const isHorizontal = img.width > img.height;
-    
-    const maxSize = 1000;
-    let width = img.width;
-    let height = img.height;
-    
-    if (width > height && width > maxSize) {
-      height = (height * maxSize) / width;
-      width = maxSize;
-    } else if (height > maxSize) {
-      width = (width * maxSize) / height;
-      height = maxSize;
-    }
-    
-    if (isHorizontal) {
-      processCanvas.width = height;
-      processCanvas.height = width;
-      ctx.translate(height / 2, width / 2);
-      ctx.rotate(90 * Math.PI / 180);
-      ctx.drawImage(img, -width / 2, -height / 2, width, height);
-    } else {
-      processCanvas.width = width;
-      processCanvas.height = height;
-      ctx.drawImage(img, 0, 0, width, height);
-    }
-    
-    const compressed = processCanvas.toDataURL('image/jpeg', 0.7);
-    
-    const imgRatio = processCanvas.width / processCanvas.height;
-    const pageRatio = pageWidth / pageHeight;
-    
-    let finalWidth, finalHeight;
-    if (imgRatio > pageRatio) {
-      finalWidth = pageWidth;
-      finalHeight = pageWidth / imgRatio;
-    } else {
-      finalHeight = pageHeight;
-      finalWidth = pageHeight * imgRatio;
-    }
-    
-    const x = (pageWidth - finalWidth) / 2;
-    const y = (pageHeight - finalHeight) / 2;
-    
-    pdf.addImage(compressed, 'JPEG', x, y, finalWidth, finalHeight);
-    
-    const patientId = $("#patient_id")?.value || 'SinID';
-    const now = new Date();
-    const fecha = `${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
-    const filename = `${patientId}-${docType}-${fecha}.pdf`;
-    
-    if(doDownload){
-      pdf.save(filename);
-      flash(`✓ PDF descargado: ${filename}`);
-    }
-    
-    let pdfUrl = null;
-    
-    if(doEmail || doWhatsApp){
-      $("#exportStatus").textContent = 'Subiendo a la nube...';
-      const pdfBlob = pdf.output('blob');
-      const supabaseFilename = `${patientId}/${docType}-${fecha}-${Date.now()}.pdf`;
+    canvas.toBlob(blob=>{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
-      const { data, error } = await supabase.storage
-        .from('documentos-medicos')
-        .upload(supabaseFilename, pdfBlob, {
-          contentType: 'application/pdf',
-          upsert: true
-        });
-      
-      if (error) throw error;
-      
-      const { data: urlData } = supabase.storage
-        .from('documentos-medicos')
-        .createSignedUrl(supabaseFilename, 86400);
-      
-      pdfUrl = urlData.signedUrl;
-    }
+      $("#pngFilename").textContent=filename;
+      $("#exportModal").classList.add('active');
+      flash('PNG descargado: '+filename);
+    },'image/png');
     
-    if(doWhatsApp && pdfUrl){
-      const phone = $("#phone")?.value?.trim();
-      if(phone){
-        const nombre = $("#full_name")?.value || 'Paciente';
-        const mensaje = `Estimado/a ${nombre}, adjunto documento de su consulta:\n\n${docType}: ${pdfUrl}`;
-        const phoneClean = phone.replace(/[^0-9]/g, '');
-        const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
-        window.open(whatsappUrl, '_blank');
-        flash('WhatsApp abierto con link PDF');
-      }else{
-        showErr('No hay teléfono registrado para WhatsApp');
-      }
-    }
-    
-    if(doEmail && pdfUrl){
-      const email = $("#email")?.value?.trim();
-      if(email){
-        const mensaje = `Estimado/a ${$("#full_name")?.value || 'Paciente'},\n\nAdjunto documento de su consulta:\n\n${docType}: ${pdfUrl}\n\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
-        const mailtoLink = `mailto:${email}?subject=${encodeURIComponent('Documentos médicos - Consulta')}&body=${encodeURIComponent(mensaje)}`;
-        window.open(mailtoLink, '_blank');
-        flash('Email preparado con link PDF');
-      }else{
-        showErr('No hay email registrado');
-      }
-    }
-    
-    $('#exportModal').classList.remove('active');
-    
-  } catch(err) {
-    showErr('Error: ' + err.message);
+  }catch(err){
+    showErr('Error exportando: '+err.message);
     console.error(err);
-  } finally {
-    $("#exportStatus").textContent = '';
-    $("#btnDoExport").disabled = false;
   }
+});
+
+$("#btnCloseExport")?.addEventListener('click',()=>{
+  $("#exportModal").classList.remove('active');
 });
 function serializeCurrentState(){
   const patient={
@@ -1349,7 +1213,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
         }
       }catch(err){console.error('Error cargando autoguardado:',err)}
     }
-    flash('Sistema CIMA listo - PDF optimizado + Guardado completo');
+    flash('Sistema CIMA listo - Exporta PNG + Convertidor');
   }catch(ex){showErr('Error al iniciar: '+ex.message)}
 });
 
