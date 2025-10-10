@@ -953,6 +953,8 @@ function collectStudies(card){
   }).filter(Boolean).join('');
 }
 
+let USE_SIG=true;
+
 function buildReportHTML(card){
   const date=card.querySelector('.visit-date').value;
   const ea=(card.querySelector('.txt-ea')?.value||'').trim();
@@ -965,7 +967,8 @@ function buildReportHTML(card){
   const pe=collectPE(card);
   const studies=collectStudies(card);
   const hasHF=TPL['header-inf']||TPL['footer-inf'];
-  return`<div class="doc-page doc-letter">${TPL['header-inf']?`<div class="doc-header"><img src="${TPL['header-inf']}"></div>`:''}<div class="doc-wrap ${hasHF?'has-hf':''}" id="docWrapINF" contenteditable="true"><div class="kv2"><div>${patientLine()}</div><div class="small">${fmtDateTime(date)}</div></div><div class="doc-title">INFORME MÉDICO - OTORRINOLARINGOLOGÍA</div>${ea?`<div class="kv2-line" style="white-space:pre-wrap;margin-top:2px">${ea}</div>`:''}${motivo?`<div class="kv2-line"><span class="kv">Motivo:</span> ${motivo}</div>`:''}${ap?`<div class="kv2-line"><span class="kv">Antecedentes personales:</span> ${ap}</div>`:''}${af?`<div class="kv2-line"><span class="kv">Antecedentes familiares:</span> ${af}</div>`:''}${hab?`<div class="kv2-line"><span class="kv">Hábitos psicobiológicos:</span> ${hab}</div>`:''}${pe?`<div class="kv2-line" style="margin-top:4px"><span class="kv">Examen físico:</span> <span style="white-space:pre-wrap">${pe}</span></div>`:''}${studies?`<div style="margin-top:4px"><span class="kv">Estudios realizados:</span><ul class="compact">${studies}</ul></div>`:''}${dx?`<div class="kv2-line" style="margin-top:6px"><span class="kv">Diagnóstico:</span> ${dx}</div>`:''}${plan?`<div class="kv2-line"><span class="kv">Plan / Tratamiento:</span> ${plan}</div>`:''}<div class="doc-sign" id="sigContainerInf"></div></div>${TPL['footer-inf']?`<div class="doc-footer"><img src="${TPL['footer-inf']}"></div>`:''}</div>`;
+  const firmaImg=USE_SIG?TPL['firma-si']:TPL['firma-no'];
+  return`<div class="doc-page doc-letter">${TPL['header-inf']?`<div class="doc-header"><img src="${TPL['header-inf']}"></div>`:''}<div class="doc-wrap ${hasHF?'has-hf':''}" id="docWrapINF" contenteditable="true"><div class="kv2"><div>${patientLine()}</div><div class="small">${fmtDateTime(date)}</div></div><div class="doc-title">INFORME MÉDICO - OTORRINOLARINGOLOGÍA</div>${ea?`<div class="kv2-line" style="white-space:pre-wrap;margin-top:2px">${ea}</div>`:''}${motivo?`<div class="kv2-line"><span class="kv">Motivo:</span> ${motivo}</div>`:''}${ap?`<div class="kv2-line"><span class="kv">Antecedentes personales:</span> ${ap}</div>`:''}${af?`<div class="kv2-line"><span class="kv">Antecedentes familiares:</span> ${af}</div>`:''}${hab?`<div class="kv2-line"><span class="kv">Hábitos psicobiológicos:</span> ${hab}</div>`:''}${pe?`<div class="kv2-line" style="margin-top:4px"><span class="kv">Examen físico:</span> <span style="white-space:pre-wrap">${pe}</span></div>`:''}${studies?`<div style="margin-top:4px"><span class="kv">Estudios realizados:</span><ul class="compact">${studies}</ul></div>`:''}${dx?`<div class="kv2-line" style="margin-top:6px"><span class="kv">Diagnóstico:</span> ${dx}</div>`:''}${plan?`<div class="kv2-line"><span class="kv">Plan / Tratamiento:</span> ${plan}</div>`:''}<div class="doc-sign" id="sigContainerInf">${firmaImg?`<img src="${firmaImg}" alt="firma">`:''}</div></div>${TPL['footer-inf']?`<div class="doc-footer"><img src="${TPL['footer-inf']}"></div>`:''}</div>`;
 }
 
 function buildRecipeHTML(card){
@@ -976,10 +979,10 @@ function buildRecipeHTML(card){
   const recipe=(card.querySelector('.txt-recipe')?.value||'').trim();
   const indicaciones=(card.querySelector('.txt-indicaciones')?.value||'').trim();
   const hasHF=TPL['header-rp']||TPL['footer-rp'];
-  return`<div class="doc-page doc-letter land">${TPL['header-rp']?`<div class="doc-header"><img src="${TPL['header-rp']}"></div>`:''}<div class="doc-wrap ${hasHF?'has-hf':''}" id="docWrapRP"><div class="split"><div class="rp-panel"><div class="rp-title" style="text-align:left;margin-left:20px">RP.</div><div class="small" style="text-align:left;margin-left:20px;margin-bottom:4px">${name} — ${doc} — ${date}</div><div class="rp-content" contenteditable style="border:none;padding:6px 20px;margin-top:.25rem;white-space:pre-wrap">${recipe}</div><div class="rp-sign-bottom" id="sigContainerRpL"></div></div><div class="rp-panel"><div class="rp-title" style="text-align:left;margin-left:20px">INDICACIONES</div><div class="rp-content" contenteditable style="border:none;padding:6px 20px;margin-top:.25rem;white-space:pre-wrap">${indicaciones}</div><div class="rp-sign-bottom" id="sigContainerRpR"></div></div></div></div>${TPL['footer-rp']?`<div class="doc-footer"><img src="${TPL['footer-rp']}"></div>`:''}</div>`;
+  const firmaImg=USE_SIG?TPL['firma-si']:TPL['firma-no'];
+  return`<div class="doc-page doc-letter land">${TPL['header-rp']?`<div class="doc-header"><img src="${TPL['header-rp']}"></div>`:''}<div class="doc-wrap ${hasHF?'has-hf':''}" id="docWrapRP"><div class="split"><div class="rp-panel"><div class="rp-title" style="text-align:left;margin-left:20px">RP.</div><div class="small" style="text-align:left;margin-left:20px;margin-bottom:4px">${name} — ${doc} — ${date}</div><div class="rp-content" contenteditable style="border:none;padding:6px 20px;margin-top:.25rem;white-space:pre-wrap">${recipe}</div><div class="rp-sign-bottom" id="sigContainerRpL">${firmaImg?`<img src="${firmaImg}" alt="firma">`:''}</div></div><div class="rp-panel"><div class="rp-title" style="text-align:left;margin-left:20px">INDICACIONES</div><div class="rp-content" contenteditable style="border:none;padding:6px 20px;margin-top:.25rem;white-space:pre-wrap">${indicaciones}</div><div class="rp-sign-bottom" id="sigContainerRpR">${firmaImg?`<img src="${firmaImg}" alt="firma">`:''}</div></div></div></div>${TPL['footer-rp']?`<div class="doc-footer"><img src="${TPL['footer-rp']}"></div>`:''}</div>`;
 }
 
-let USE_SIG=true;
 function mountFirma(){
   const img=USE_SIG?TPL['firma-si']:TPL['firma-no'];
   const inf=$("#docPreview #sigContainerInf");
@@ -1466,7 +1469,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
         }
       }catch(err){console.error('Error cargando autoguardado:',err)}
     }
-    flash('✅ CIMA listo - Sistema completo con documentos persistentes');
+    flash('✅ CIMA listo - Sistema completo con firma en documentos');
   }catch(ex){showErr('Error al iniciar: '+ex.message)}
 });
 
