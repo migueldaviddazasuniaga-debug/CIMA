@@ -1,388 +1,608 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Conversor Documentos Médicos</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-      background:#f5f7fa; min-height:100vh; padding:20px;
-    }
-    .container { max-width:900px; margin:0 auto; }
-    .header { background:#fff; padding:20px 30px; border-radius:8px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.1); }
-    .header h1 { color:#1a1a1a; font-size:24px; font-weight:600; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor Documentos Médicos</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    .step { background:#fff; padding:30px; border-radius:8px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.1); display:none; }
-    .step.active{ display:block; }
-    .step-header{ display:flex; align-items:center; gap:15px; margin-bottom:20px; padding-bottom:15px; border-bottom:2px solid #e5e7eb; }
-    .step-number{ width:40px; height:40px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:18px; }
-    .step-title{ font-size:20px; font-weight:600; color:#1a1a1a; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-    .upload-zone{ border:2px dashed #d1d5db; border-radius:8px; padding:60px; text-align:center; cursor:pointer; transition:.3s; }
-    .upload-zone:hover{ border-color:#3b82f6; background:#f0f9ff; }
-    .upload-zone input{ display:none; }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
 
-    .image-list{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin:20px 0; }
-    .image-item{ background:#f9fafb; padding:10px; border-radius:6px; font-size:13px; word-break:break-all; border:1px solid #e5e7eb; }
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
 
-    .preview-container{ border:1px solid #e5e7eb; border-radius:8px; padding:20px; background:#fafafa; max-height:600px; overflow-y:auto; }
-    .preview-container img{ width:100%; margin-bottom:20px; border-radius:4px; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+        .header h1 {
+            color: #1a1a1a;
+            font-size: 24px;
+            font-weight: 600;
+        }
 
-    .btn{ padding:12px 24px; border:0; border-radius:6px; font-size:15px; font-weight:500; cursor:pointer; transition:.2s; display:inline-flex; align-items:center; gap:8px; }
-    .btn-primary{ background:#3b82f6; color:#fff; } .btn-primary:hover{ background:#2563eb; }
-    .btn-secondary{ background:#6b7280; color:#fff; } .btn-secondary:hover{ background:#4b5563; }
-    .btn-success{ background:#10b981; color:#fff; } .btn-success:hover{ background:#059669; }
-    .button-group{ display:flex; gap:10px; margin-top:20px; }
+        .step {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: none;
+        }
 
-    .info-box{ background:#e0f2fe; border-left:4px solid #0284c7; padding:15px; border-radius:6px; margin:15px 0; font-size:14px; color:#0c4a6e; }
-    .export-options{ display:flex; justify-content:center; margin-top:20px; }
-    .export-card{ border:2px solid #e5e7eb; border-radius:8px; padding:30px; cursor:pointer; transition:.3s; text-align:center; max-width:300px; }
-    .export-card:hover{ border-color:#3b82f6; background:#f0f9ff; }
-    .export-card h3{ font-size:16px; margin-bottom:5px; color:#1a1a1a; }
-    .export-card p{ font-size:13px; color:#6b7280; }
+        .step.active {
+            display: block;
+        }
 
-    .config-input{ width:100%; padding:12px; border:1px solid #d1d5db; border-radius:6px; font-size:15px; margin-bottom:10px; }
-    .status{ padding:12px; border-radius:6px; margin:15px 0; font-size:14px; }
-    .status.success{ background:#d1fae5; color:#065f46; }
-    .status.error{ background:#fee2e2; color:#991b1b; }
-    .status.info{ background:#e0f2fe; color:#0c4a6e; }
+        .step-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
 
-    .pdf-info{ background:#f9fafb; padding:15px; border-radius:6px; margin:15px 0; display:flex; justify-content:space-between; align-items:center; }
-    .debug-log{ background:#1f2937; color:#10b981; padding:15px; border-radius:6px; margin:15px 0; font-family:monospace; font-size:12px; max-height:200px; overflow-y:auto; }
-    .debug-log div{ margin-bottom:5px; }
-  </style>
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .upload-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-zone:hover {
+            border-color: #3b82f6;
+            background: #f0f9ff;
+        }
+
+        .upload-zone input {
+            display: none;
+        }
+
+        .image-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .image-item {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            word-break: break-all;
+            border: 1px solid #e5e7eb;
+        }
+
+        .preview-container {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fafafa;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .preview-container img {
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .info-box {
+            background: #e0f2fe;
+            border-left: 4px solid #0284c7;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #0c4a6e;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status.info {
+            background: #e0f2fe;
+            color: #0c4a6e;
+        }
+
+        .link-box {
+            background: #f0f9ff;
+            border: 2px solid #3b82f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .link-box .link-url {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e40af;
+            word-break: break-all;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+        }
+
+        .copy-btn {
+            background: #10b981;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .copy-btn:hover {
+            background: #059669;
+        }
+
+        .debug-log {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .debug-log div {
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header"><h1>Conversor Documentos Médicos</h1></div>
-
-    <!-- PASO 1 -->
-    <div id="step1" class="step active">
-      <div class="step-header">
-        <div class="step-number">1</div><div class="step-title">Cargar Imágenes PNG</div>
-      </div>
-
-      <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin:0 auto 15px;">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <p style="color:#6b7280;font-size:16px;">Seleccionar imágenes PNG</p>
-        <input type="file" id="fileInput" accept="image/png" multiple />
-      </div>
-
-      <div id="imagesList" class="image-list"></div>
-
-      <div class="button-group">
-        <button class="btn btn-primary" id="btnNext1" style="display:none;" onclick="goToStep2()">Siguiente: Crear PDF</button>
-      </div>
-    </div>
-
-    <!-- PASO 2 -->
-    <div id="step2" class="step">
-      <div class="step-header">
-        <div class="step-number">2</div><div class="step-title">Configurar PDF</div>
-      </div>
-
-      <div class="info-box">El nombre del archivo será: [ID_Primer_Archivo]_consulta_[Fecha].pdf</div>
-
-      <div>
-        <label style="display:block;margin-bottom:5px;font-weight:500;">ID del Paciente (del primer archivo):</label>
-        <input type="text" id="patientId" class="config-input" placeholder="Se extraerá automáticamente" />
-      </div>
-
-      <div>
-        <label style="display:block;margin-bottom:5px;font-weight:500;">Fecha de la Consulta:</label>
-        <input type="date" id="consultDate" class="config-input" />
-      </div>
-
-      <div class="preview-container" id="previewContainer"></div>
-      <div id="debugLog" class="debug-log" style="display:none;"></div>
-
-      <div class="button-group">
-        <button class="btn btn-secondary" onclick="goToStep1()">Volver</button>
-        <button class="btn btn-primary" onclick="createPDF()">Generar PDF</button>
-      </div>
-    </div>
-
-    <!-- PASO 3 -->
-    <div id="step3" class="step">
-      <div class="step-header">
-        <div class="step-number">3</div><div class="step-title">Exportar PDF</div>
-      </div>
-
-      <div id="statusMsg"></div>
-
-      <div id="pdfInfo" class="pdf-info" style="display:none;">
-        <div>
-          <strong id="pdfFileName"></strong>
-          <div id="pdfSize" style="color:#6b7280;font-size:13px;margin-top:5px;"></div>
+    <div class="container">
+        <div class="header">
+            <h1>Conversor PNG → PDF con Supabase</h1>
         </div>
-      </div>
 
-      <div class="export-options">
-        <div class="export-card" onclick="downloadPDF()">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" style="margin:0 auto;">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          <h3>Descargar PDF</h3>
-          <p>El archivo se guardará en tu carpeta de Descargas</p>
+        <!-- PASO 1: Cargar archivos -->
+        <div id="step1" class="step active">
+            <div class="step-header">
+                <div class="step-number">1</div>
+                <div class="step-title">Cargar Imágenes PNG</div>
+            </div>
+
+            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin: 0 auto 15px;">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+                <p style="color: #6b7280; font-size: 16px;">Seleccionar imágenes PNG</p>
+                <input type="file" id="fileInput" accept="image/png" multiple>
+            </div>
+
+            <div id="imagesList" class="image-list"></div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="btnNext1" style="display:none;" onclick="goToStep2()">
+                    Siguiente: Crear PDF
+                </button>
+            </div>
         </div>
-      </div>
 
-      <div class="button-group" style="margin-top:30px;">
-        <button class="btn btn-secondary" onclick="goToStep1()">Nueva Conversión</button>
-      </div>
+        <!-- PASO 2: Generar PDF -->
+        <div id="step2" class="step">
+            <div class="step-header">
+                <div class="step-number">2</div>
+                <div class="step-title">Generar PDF</div>
+            </div>
+
+            <div class="info-box">
+                El archivo se llamará: <strong id="previewFilename"></strong>
+            </div>
+
+            <div class="preview-container" id="previewContainer"></div>
+
+            <div id="debugLog" class="debug-log" style="display:none;"></div>
+
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="goToStep1()">Volver</button>
+                <button class="btn btn-primary" onclick="createAndUploadPDF()">Generar y Subir PDF</button>
+            </div>
+        </div>
+
+        <!-- PASO 3: Link generado -->
+        <div id="step3" class="step">
+            <div class="step-header">
+                <div class="step-number">3</div>
+                <div class="step-title">¡PDF Generado!</div>
+            </div>
+
+            <div id="statusMsg"></div>
+
+            <div id="linkBox" class="link-box" style="display:none;">
+                <h3 style="color: #1e40af; margin-bottom: 10px;">📎 Link del PDF (copiado al portapapeles)</h3>
+                <div class="link-url" id="pdfLinkUrl"></div>
+                <button class="copy-btn" onclick="copyLinkAgain()">Copiar link nuevamente</button>
+            </div>
+
+            <div class="button-group" style="margin-top: 30px;">
+                <button class="btn btn-secondary" onclick="goToStep1()">Nueva Conversión</button>
+                <button class="btn btn-success" onclick="window.close()">Cerrar y volver a CIMA</button>
+            </div>
+        </div>
     </div>
-  </div>
 
-<script>
-  const { jsPDF } = window.jspdf;
-  let selectedFiles = [];
-  let generatedPDF = null;
-  let pdfFileName = '';
+    <script>
+        const SUPABASE_URL = 'https://nfvpzcifcjjpmbpwsnbr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
 
-  // === NUEVO: constantes de calidad ===
-  const PAGE_PT = { w: 612, h: 792 };        // Carta en pt
-  const PX = { w: 1700, h: 2200 };           // ~200 dpi (mejor texto)
+        const { jsPDF } = window.jspdf;
+        let selectedFiles = [];
+        let generatedPDFUrl = null;
+        let shortUrl = null;
+        let supabase = null;
 
-  document.getElementById('fileInput').addEventListener('change', handleFiles);
-  document.getElementById('consultDate').valueAsDate = new Date();
+        // Inicializar Supabase
+        (async function initSupabase() {
+            let attempts = 0;
+            while (!window.supabase && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                log('Supabase conectado');
+            } else {
+                showStatus('Error: No se pudo cargar Supabase', 'error');
+            }
+        })();
 
-  function log(msg){
-    const debugLog = document.getElementById('debugLog');
-    debugLog.style.display = 'block';
-    const div = document.createElement('div');
-    div.textContent = '['+new Date().toLocaleTimeString()+'] '+msg;
-    debugLog.appendChild(div);
-    debugLog.scrollTop = debugLog.scrollHeight;
-    console.log(msg);
-  }
+        document.getElementById('fileInput').addEventListener('change', handleFiles);
 
-  function handleFiles(e){
-    selectedFiles = Array.from(e.target.files).filter(f => f.type === 'image/png');
-    log('Archivos seleccionados: ' + selectedFiles.length);
+        function log(msg) {
+            const debugLog = document.getElementById('debugLog');
+            debugLog.style.display = 'block';
+            const div = document.createElement('div');
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            debugLog.appendChild(div);
+            debugLog.scrollTop = debugLog.scrollHeight;
+            console.log(msg);
+        }
 
-    const list = document.getElementById('imagesList');
-    list.innerHTML = '';
-    selectedFiles.forEach(file => {
-      const item = document.createElement('div');
-      item.className = 'image-item';
-      item.textContent = file.name;
-      list.appendChild(item);
-    });
+        function handleFiles(e) {
+            selectedFiles = Array.from(e.target.files).filter(f => f.type === 'image/png');
+            log(`Archivos seleccionados: ${selectedFiles.length}`);
+            
+            const list = document.getElementById('imagesList');
+            list.innerHTML = '';
+            
+            selectedFiles.forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'image-item';
+                item.textContent = file.name;
+                list.appendChild(item);
+            });
 
-    // ID del primer archivo (mejor heurística si viene prefijo tipo V-/B-/E-)
-    if (selectedFiles.length > 0) {
-      const base = selectedFiles[0].name.replace(/\.png$/i,'');
-      let id = null;
-      const rex = /([BVE]-?\d{6,12})/i;
-      const m = base.match(rex);
-      if (m) id = m[1].toUpperCase();
-      else {
-        const onlyNum = base.match(/^(\d{6,12})/);
-        id = onlyNum ? onlyNum[1] : base.substring(0,12);
-      }
-      document.getElementById('patientId').value = id || '';
-    }
+            // Extraer info del primer archivo: ID-consulta-DDMMYY.png
+            if (selectedFiles.length > 0) {
+                const firstName = selectedFiles[0].name.replace('.png', '');
+                document.getElementById('previewFilename').textContent = `${fileName}.pdf`;
+            }
 
-    document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex':'none';
-  }
+            document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex' : 'none';
+        }
 
-  function goToStep1(){ document.querySelectorAll('.step').forEach(s=>s.classList.remove('active')); document.getElementById('step1').classList.add('active'); }
-  function goToStep2(){ document.querySelectorAll('.step').forEach(s=>s.classList.remove('active')); document.getElementById('step2').classList.add('active'); showPreview(); }
-  function goToStep3(){ document.querySelectorAll('.step').forEach(s=>s.classList.remove('active')); document.getElementById('step3').classList.add('active'); }
+        function goToStep1() {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step1').classList.add('active');
+        }
 
-  function showPreview(){
-    const container = document.getElementById('previewContainer');
-    container.innerHTML = '';
-    log('Mostrando vista previa...');
-    selectedFiles.forEach(file =>{
-      const reader = new FileReader();
-      reader.onload = (e)=>{
-        const img = document.createElement('img');
-        img.src = e.target.result;
-        container.appendChild(img);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
+        function goToStep2() {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step2').classList.add('active');
+            showPreview();
+            
+            // Extraer nombre del archivo
+            if (selectedFiles.length > 0) {
+                const firstName = selectedFiles[0].name.replace('.png', '');
+                document.getElementById('previewFilename').textContent = `${firstName}.pdf`;
+            }
+        }
 
-  // === NUEVO: helpers de calidad ===
-  function drawImageToCanvas(img){
-    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
-    const rotate = iw > ih; // horizontales → rotamos
+        function goToStep3() {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById('step3').classList.add('active');
+        }
 
-    const cnv = document.createElement('canvas'); cnv.width = PX.w; cnv.height = PX.h;
-    const ctx = cnv.getContext('2d', { alpha:false });
-    ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cnv.width,cnv.height);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+        function showPreview() {
+            const container = document.getElementById('previewContainer');
+            container.innerHTML = '';
+            log('Mostrando vista previa...');
 
-    const rw = rotate ? ih : iw;
-    const rh = rotate ? iw : ih;
+            selectedFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    container.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
 
-    // contain + no upscale (no escalar por encima de 1x)
-    let scale = Math.min(cnv.width / rw, cnv.height / rh);
-    scale = Math.min(scale, 1);
-    const dw = rw * scale, dh = rh * scale;
-    const dx = (cnv.width - dw)/2, dy = (cnv.height - dh)/2;
+        async function createAndUploadPDF() {
+            log('Iniciando generación de PDF...');
+            showStatus('Generando PDF...', 'info');
 
-    ctx.save();
-    if (rotate){
-      // rotar alrededor del centro de la hoja
-      ctx.translate(cnv.width/2, cnv.height/2);
-      ctx.rotate(90*Math.PI/180);
-      // al rotar, dw y dh “intercambian roles”
-      ctx.drawImage(img, -dh/2, -dw/2, dh, dw);
-    }else{
-      ctx.drawImage(img, dx, dy, dw, dh);
-    }
-    ctx.restore();
+            try {
+                // Extraer nombre del archivo base
+                const firstName = selectedFiles[0].name.replace('.png', '');
+                const pdfFileName = `${firstName}.pdf`;
+                
+                log(`Nombre del archivo: ${pdfFileName}`);
 
-    return cnv;
-  }
+                const pdf = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'letter',
+                    compress: true
+                });
 
-  function looksLikeTextPage(canvas){
-    // muestreo central para estimar varianza (texto/fondo ≈ baja varianza)
-    const ctx = canvas.getContext('2d');
-    const { width, height } = canvas;
-    const sw = Math.min(200, width), sh = Math.min(200, height);
-    const sx = Math.floor((width - sw)/2), sy = Math.floor((height - sh)/2);
-    const data = ctx.getImageData(sx, sy, sw, sh).data;
+                log(`Total de imágenes a procesar: ${selectedFiles.length}`);
 
-    let mean=0; const n = data.length/4;
-    for (let i=0;i<data.length;i+=4){
-      const y = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-      mean += y;
-    }
-    mean /= n;
-    let varSum=0;
-    for (let i=0;i<data.length;i+=4){
-      const y = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
-      const d = y - mean; varSum += d*d;
-    }
-    const variance = varSum / n;
-    return variance < 700; // umbral empírico
-  }
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    log(`Procesando imagen ${i + 1}/${selectedFiles.length}`);
+                    
+                    const file = selectedFiles[i];
+                    const imgData = await readFileAsDataURL(file);
+                    const img = await loadImage(imgData);
+                    
+                    if (i > 0) {
+                        pdf.addPage();
+                    }
 
-  function canvasToBestDataURL(cnv){
-    if (looksLikeTextPage(cnv)){
-      const png = cnv.toDataURL('image/png');
-      // si el PNG no es enorme, úsalo (texto queda nítido)
-      if (png.length/1024 < 180*3) return { dataUrl: png, type: 'PNG' };
-      return { dataUrl: cnv.toDataURL('image/jpeg', 0.8), type:'JPEG' };
-    }
-    return { dataUrl: cnv.toDataURL('image/jpeg', 0.8), type:'JPEG' };
-  }
+                    const pageWidth = 215.9;
+                    const pageHeight = 279.4;
+                    
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const isHorizontal = img.width > img.height;
+                    
+                    const maxSize = 1000;
+                    let width = img.width;
+                    let height = img.height;
+                    
+                    if (width > height && width > maxSize) {
+                        height = (height * maxSize) / width;
+                        width = maxSize;
+                    } else if (height > maxSize) {
+                        width = (width * maxSize) / height;
+                        height = maxSize;
+                    }
+                    
+                    if (isHorizontal) {
+                        canvas.width = height;
+                        canvas.height = width;
+                        ctx.translate(height / 2, width / 2);
+                        ctx.rotate(90 * Math.PI / 180);
+                        ctx.drawImage(img, -width / 2, -height / 2, width, height);
+                    } else {
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                    }
+                    
+                    const compressed = canvas.toDataURL('image/jpeg', 0.7);
 
-  // === mantenemos utilidades de Claude ===
-  function readFileAsDataURL(file){
-    return new Promise((resolve,reject)=>{
-      const reader = new FileReader();
-      reader.onload = e => resolve(e.target.result);
-      reader.onerror = e => reject(e);
-      reader.readAsDataURL(file);
-    });
-  }
-  function loadImage(src){
-    return new Promise((resolve,reject)=>{
-      const img = new Image();
-      img.onload = ()=>resolve(img);
-      img.onerror = ()=>reject(new Error('Error cargando imagen'));
-      img.src = src;
-    });
-  }
+                    const imgRatio = canvas.width / canvas.height;
+                    const pageRatio = pageWidth / pageHeight;
 
-  // === REEMPLAZO: createPDF con calidad mejorada ===
-  async function createPDF(){
-    log('Iniciando generación de PDF…');
-    showStatus('Generando PDF…','info');
+                    let finalWidth, finalHeight;
+                    if (imgRatio > pageRatio) {
+                        finalWidth = pageWidth;
+                        finalHeight = pageWidth / imgRatio;
+                    } else {
+                        finalHeight = pageHeight;
+                        finalWidth = pageHeight * imgRatio;
+                    }
 
-    try{
-      const patientId = (document.getElementById('patientId').value || 'PACIENTE').trim();
-      const consultDate = (document.getElementById('consultDate').value || new Date().toISOString().split('T')[0]).trim();
-      pdfFileName = `${patientId}_consulta_${consultDate}.pdf`;
-      log('Nombre del archivo: ' + pdfFileName);
+                    const x = (pageWidth - finalWidth) / 2;
+                    const y = (pageHeight - finalHeight) / 2;
 
-      if (!selectedFiles.length) throw new Error('No hay imágenes seleccionadas.');
+                    pdf.addImage(compressed, 'JPEG', x, y, finalWidth, finalHeight);
+                }
 
-      // 1) rasterizar todas con la nueva estrategia (200dpi, no-upscale, smoothing)
-      const canvases = [];
-      for (let i=0;i<selectedFiles.length;i++){
-        const f = selectedFiles[i];
-        log(`Procesando imagen ${i+1}/${selectedFiles.length}: ${f.name}`);
-        const data = await readFileAsDataURL(f);
-        const img = await loadImage(data);
-        log(`Imagen cargada: ${img.width}x${img.height}`);
-        canvases.push(drawImageToCanvas(img));
-      }
+                const pdfBlob = pdf.output('blob');
+                log(`PDF generado: ${(pdfBlob.size / 1024).toFixed(0)} KB`);
 
-      // 2) compresión adaptativa (PNG si texto / JPEG si foto)
-      const targetKB = 250; // puedes bajar a 180 si quieres apretar más
-      const qualities = [0.8, 0.7, 0.6, 0.5, 0.4]; // inicia alta
-      let best = { blob:null, sizeKB:Infinity, q:null };
+                // Subir a Supabase Storage
+                showStatus('Subiendo PDF a Supabase...', 'info');
+                
+                // Extraer ID del paciente del nombre del archivo
+                const patientId = firstName.split('-')[0]; // V-12345
+                const supabasePath = `${patientId}/${pdfFileName}`;
+                
+                log(`Subiendo a: ${supabasePath}`);
+                
+                const { data: uploadData, error: uploadError } = await supabase.storage
+                    .from('documentos-medicos')
+                    .upload(supabasePath, pdfBlob, {
+                        contentType: 'application/pdf',
+                        upsert: true
+                    });
 
-      for (const q of qualities){
-        const pdf = new jsPDF({ orientation:'portrait', unit:'pt', format:'letter', compress:true });
-        canvases.forEach((c, i)=>{
-          let { dataUrl, type } = canvasToBestDataURL(c);
-          if (type === 'JPEG' && q < 0.8) {
-            // reexportar con la calidad solicitada
-            dataUrl = c.toDataURL('image/jpeg', q);
-          }
-          if (i > 0) pdf.addPage('letter','portrait');
-          pdf.addImage(dataUrl, (type==='PNG')?'PNG':'JPEG', 0, 0, PAGE_PT.w, PAGE_PT.h, undefined, 'SLOW');
-        });
-        const blob = pdf.output('blob');
-        const kb = Math.round(blob.size/1024);
-        log(`Prueba q=${q}: ~${kb} KB`);
-        if (kb < best.sizeKB) best = { blob, sizeKB: kb, q };
-        if (kb <= targetKB) { generatedPDF = blob; break; }
-      }
+                if (uploadError) throw uploadError;
+                
+                log('PDF subido a Supabase exitosamente');
 
-      if (!generatedPDF) generatedPDF = best.blob;
+                // Obtener URL pública
+                const { data: urlData } = supabase.storage
+                    .from('documentos-medicos')
+                    .getPublicUrl(supabasePath);
 
-      const sizeKB = Math.round(generatedPDF.size/1024);
-      const sizeMB = (generatedPDF.size/(1024*1024)).toFixed(2);
+                const longUrl = urlData.publicUrl;
+                log(`URL larga: ${longUrl}`);
 
-      log(`PDF final: ${sizeKB} KB`);
-      document.getElementById('pdfFileName').textContent = pdfFileName;
-      document.getElementById('pdfSize').textContent = sizeMB >= 1 ? `Tamaño: ${sizeMB} MB` : `Tamaño: ${sizeKB} KB`;
-      document.getElementById('pdfInfo').style.display = 'flex';
+                // Acortar con TinyURL
+                showStatus('Acortando link con TinyURL...', 'info');
+                
+                const tinyResponse = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                shortUrl = await tinyResponse.text();
+                
+                log(`URL corta: ${shortUrl}`);
 
-      if (sizeKB > 300) showStatus(`PDF generado (${sizeKB} KB). Puedes bajar calidad si requieres <300 KB.`, 'info');
-      else showStatus(`PDF generado exitosamente (${sizeKB} KB)`, 'success');
+                // Copiar al portapapeles
+                await navigator.clipboard.writeText(shortUrl);
+                log('Link copiado al portapapeles');
 
-      goToStep3();
-    } catch(err){
-      log('ERROR: ' + err.message);
-      log('Stack: ' + (err.stack||''));
-      showStatus('Error al generar PDF: ' + err.message, 'error');
-    }
-  }
+                // Mostrar resultado
+                document.getElementById('pdfLinkUrl').textContent = shortUrl;
+                document.getElementById('linkBox').style.display = 'block';
+                showStatus('✅ PDF subido y link copiado al portapapeles', 'success');
+                
+                goToStep3();
 
-  function downloadPDF(){
-    if (!generatedPDF){ showStatus('No hay PDF para descargar','error'); return; }
-    log('Descargando PDF…');
-    const url = URL.createObjectURL(generatedPDF);
-    const a = document.createElement('a');
-    a.href = url; a.download = pdfFileName;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showStatus('PDF descargado: ' + pdfFileName, 'success');
-  }
+            } catch (error) {
+                log(`ERROR: ${error.message}`);
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
 
-  function showStatus(msg, type){
-    const el = document.getElementById('statusMsg');
-    el.className = 'status ' + type;
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-</script>
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = (e) => reject(new Error('Error cargando imagen'));
+                img.src = src;
+            });
+        }
+
+        async function copyLinkAgain() {
+            if (shortUrl) {
+                await navigator.clipboard.writeText(shortUrl);
+                showStatus('Link copiado nuevamente', 'success');
+            }
+        }
+
+        function showStatus(msg, type) {
+            const status = document.getElementById('statusMsg');
+            status.className = `status ${type}`;
+            status.textContent = msg;
+            status.style.display = 'block';
+        }
+    </script>
 </body>
 </html>
