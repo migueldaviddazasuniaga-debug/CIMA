@@ -323,13 +323,13 @@
             <div id="statusMsg"></div>
 
             <div id="linkBox" class="link-box" style="display:none;">
-                <h3 style="color: #1e40af; margin-bottom: 10px;">📎 Link del PDF (copiado al portapapeles)</h3>
+                <h3 style="color: #1e40af; margin-bottom: 10px;">📎 Link del PDF</h3>
                 <div class="link-url" id="pdfLinkUrl"></div>
-                <button class="copy-btn" onclick="copyLinkAgain()">Copiar link nuevamente</button>
+                <button class="copy-btn" onclick="copyLinkAgain()">Copiar link</button>
             </div>
 
             <div class="button-group" style="margin-top: 30px;">
-                <button class="btn btn-secondary" onclick="goToStep1()">Nueva Conversión</button>
+                <button class="btn btn-secondary" onclick="resetConverter()">Nueva Conversión</button>
                 <button class="btn btn-success" onclick="window.close()">Cerrar y volver a CIMA</button>
             </div>
         </div>
@@ -355,9 +355,9 @@
             }
             if (window.supabase) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                log('Supabase conectado');
+                log('✅ Supabase conectado');
             } else {
-                showStatus('Error: No se pudo cargar Supabase', 'error');
+                showStatus('❌ Error: No se pudo cargar Supabase', 'error');
             }
         })();
 
@@ -392,6 +392,7 @@
                 const firstName = selectedFiles[0].name.replace('.png', '');
                 pdfFileName = `${firstName}.pdf`;
                 document.getElementById('previewFilename').textContent = pdfFileName;
+                log(`Nombre PDF: ${pdfFileName}`);
             }
 
             document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex' : 'none';
@@ -413,10 +414,22 @@
             document.getElementById('step3').classList.add('active');
         }
 
+        function resetConverter() {
+            selectedFiles = [];
+            pdfFileName = '';
+            shortUrl = null;
+            document.getElementById('fileInput').value = '';
+            document.getElementById('imagesList').innerHTML = '';
+            document.getElementById('previewContainer').innerHTML = '';
+            document.getElementById('debugLog').innerHTML = '';
+            document.getElementById('btnNext1').style.display = 'none';
+            goToStep1();
+        }
+
         function showPreview() {
             const container = document.getElementById('previewContainer');
             container.innerHTML = '';
-            log('Mostrando vista previa...');
+            log('📸 Mostrando vista previa...');
 
             selectedFiles.forEach(file => {
                 const reader = new FileReader();
@@ -431,15 +444,20 @@
 
         async function createAndUploadPDF() {
             if (!pdfFileName) {
-                showStatus('Error: nombre de archivo no definido', 'error');
+                showStatus('❌ Error: nombre de archivo no definido', 'error');
                 return;
             }
 
-            log('Iniciando generación de PDF...');
-            showStatus('Generando PDF...', 'info');
+            if (!supabase) {
+                showStatus('❌ Error: Supabase no está conectado', 'error');
+                return;
+            }
+
+            log('🚀 Iniciando generación de PDF...');
+            showStatus('⏳ Generando PDF...', 'info');
 
             try {
-                log(`Nombre del archivo: ${pdfFileName}`);
+                log(`📄 Nombre del archivo: ${pdfFileName}`);
 
                 const pdf = new jsPDF({
                     orientation: 'portrait',
@@ -448,10 +466,10 @@
                     compress: true
                 });
 
-                log(`Total de imágenes a procesar: ${selectedFiles.length}`);
+                log(`📊 Total de imágenes a procesar: ${selectedFiles.length}`);
 
                 for (let i = 0; i < selectedFiles.length; i++) {
-                    log(`Procesando imagen ${i + 1}/${selectedFiles.length}`);
+                    log(`🖼️  Procesando imagen ${i + 1}/${selectedFiles.length}`);
                     
                     const file = selectedFiles[i];
                     const imgData = await readFileAsDataURL(file);
@@ -514,16 +532,16 @@
                 }
 
                 const pdfBlob = pdf.output('blob');
-                log(`PDF generado: ${(pdfBlob.size / 1024).toFixed(0)} KB`);
+                log(`✅ PDF generado: ${(pdfBlob.size / 1024).toFixed(0)} KB`);
 
                 // Subir a Supabase Storage
-                showStatus('Subiendo PDF a Supabase...', 'info');
+                showStatus('☁️ Subiendo PDF a Supabase...', 'info');
                 
                 // Extraer ID del paciente del nombre del archivo
-                const patientId = pdfFileName.split('-')[0]; // V-12345
+                const patientId = pdfFileName.split('-')[0];
                 const supabasePath = `${patientId}/${pdfFileName}`;
                 
-                log(`Subiendo a: ${supabasePath}`);
+                log(`📤 Subiendo a: ${supabasePath}`);
                 
                 const { data: uploadData, error: uploadError } = await supabase.storage
                     .from('documentos-medicos')
@@ -534,7 +552,7 @@
 
                 if (uploadError) throw uploadError;
                 
-                log('PDF subido a Supabase exitosamente');
+                log('✅ PDF subido a Supabase exitosamente');
 
                 // Obtener URL pública
                 const { data: urlData } = supabase.storage
@@ -542,30 +560,36 @@
                     .getPublicUrl(supabasePath);
 
                 const longUrl = urlData.publicUrl;
-                log(`URL larga: ${longUrl}`);
+                log(`🔗 URL larga: ${longUrl}`);
 
                 // Acortar con TinyURL
-                showStatus('Acortando link con TinyURL...', 'info');
+                showStatus('🔗 Acortando link con TinyURL...', 'info');
                 
                 const tinyResponse = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
                 shortUrl = await tinyResponse.text();
                 
-                log(`URL corta: ${shortUrl}`);
+                log(`✅ URL corta: ${shortUrl}`);
 
-                // Copiar al portapapeles
-                await navigator.clipboard.writeText(shortUrl);
-                log('Link copiado al portapapeles');
+                // Intentar copiar al portapapeles (OPCIONAL - no bloquea si falla)
+                try {
+                    await navigator.clipboard.writeText(shortUrl);
+                    log('📋 Link copiado al portapapeles automáticamente');
+                    showStatus('✅ PDF subido y link copiado al portapapeles', 'success');
+                } catch (clipboardError) {
+                    log('⚠️ No se pudo copiar automáticamente. Usa el botón "Copiar link"');
+                    showStatus('✅ PDF subido correctamente. Usa el botón "Copiar link" abajo.', 'success');
+                }
 
                 // Mostrar resultado
                 document.getElementById('pdfLinkUrl').textContent = shortUrl;
                 document.getElementById('linkBox').style.display = 'block';
-                showStatus('✅ PDF subido y link copiado al portapapeles', 'success');
                 
                 goToStep3();
 
             } catch (error) {
-                log(`ERROR: ${error.message}`);
-                showStatus('Error: ' + error.message, 'error');
+                log(`❌ ERROR: ${error.message}`);
+                showStatus('❌ Error: ' + error.message, 'error');
+                console.error('Error completo:', error);
             }
         }
 
@@ -589,8 +613,20 @@
 
         async function copyLinkAgain() {
             if (shortUrl) {
-                await navigator.clipboard.writeText(shortUrl);
-                showStatus('Link copiado nuevamente', 'success');
+                try {
+                    await navigator.clipboard.writeText(shortUrl);
+                    showStatus('✅ Link copiado al portapapeles', 'success');
+                    log('📋 Link copiado');
+                } catch (error) {
+                    // Fallback: seleccionar el texto
+                    const linkElement = document.getElementById('pdfLinkUrl');
+                    const range = document.createRange();
+                    range.selectNode(linkElement);
+                    window.getSelection().removeAllRanges();
+                    window.getSelection().addRange(range);
+                    showStatus('⚠️ Selecciona el link y copia con Ctrl+C', 'info');
+                    log('⚠️ Usa Ctrl+C para copiar');
+                }
             }
         }
 
