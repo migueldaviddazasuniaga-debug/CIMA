@@ -102,8 +102,9 @@ ul.compact li{margin:0;padding:0}
 .btn-small img{width:14px;height:14px;vertical-align:middle;filter:brightness(0)}
 
 .doc-link-section{margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;border:1px solid #e0e0e0}
-.doc-link-text{font-size:9pt;color:#007bff;word-break:break-all;margin-bottom:6px}
-.doc-actions{display:flex;gap:6px;flex-wrap:wrap}
+.doc-link-text{font-size:9pt;color:#007bff;word-break:break-all;margin-bottom:6px;cursor:pointer;padding:6px;background:#fff;border-radius:3px}
+.doc-link-text:hover{background:#f0f7ff}
+.doc-actions{display:none;gap:6px;flex-wrap:wrap;margin-top:6px}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center}
 .modal-overlay.active{display:flex}
@@ -228,11 +229,11 @@ ul.compact li{margin:0;padding:0}
 
 <div id="exportModal" class="modal-overlay">
   <div class="modal-box" style="max-width:450px">
-    <div class="modal-header">PNG descargado exitosamente</div>
+    <div class="modal-header">PNG exportado exitosamente</div>
     <div class="modal-body">
       <div style="background:#e8f5e9;padding:16px;border-radius:6px;margin-bottom:16px;text-align:center">
         <div style="font-size:48px;margin-bottom:8px">✓</div>
-        <div style="font-weight:600;font-size:13pt;color:#2e7d32">Imagen guardada en Descargas</div>
+        <div style="font-weight:600;font-size:13pt;color:#2e7d32">Archivo guardado en Descargas</div>
         <div class="small" style="color:#555;margin-top:4px" id="pngFilename"></div>
       </div>
       
@@ -255,9 +256,6 @@ ul.compact li{margin:0;padding:0}
           </div>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button id="btnCloseExport" class="btn-secondary">Cerrar</button>
     </div>
   </div>
 </div>
@@ -762,21 +760,34 @@ function updateDocStatusDisplay(card){
     const badge=document.createElement('span');
     badge.className='doc-badge emitido';
     badge.title=`Documento emitido: ${fmtDateTime(fecha)}`;
-    badge.textContent=`✓ DOC (${fmtDateShort(fecha)})`;
+    
+    const date=new Date(fecha);
+    const day=String(date.getDate()).padStart(2,'0');
+    const month=String(date.getMonth()+1).padStart(2,'0');
+    badge.textContent=`✓ DOC ${day}/${month}`;
+    
     statusArea.appendChild(badge);
     
     if(card.dataset.documentoPdfUrl){
       const linkSection=document.createElement('div');
       linkSection.className='doc-link-section';
-      linkSection.style.display='none';
       
       const linkText=document.createElement('div');
       linkText.className='doc-link-text';
       linkText.textContent=card.dataset.documentoPdfUrl;
+      linkText.onclick=()=>{
+        const actions=linkSection.querySelector('.doc-actions');
+        if(actions.style.display==='none'||actions.style.display===''){
+          actions.style.display='flex';
+        }else{
+          actions.style.display='none';
+        }
+      };
       linkSection.appendChild(linkText);
       
       const actions=document.createElement('div');
       actions.className='doc-actions';
+      actions.style.display='none';
       
       const btnWhatsApp=document.createElement('button');
       btnWhatsApp.className='btn-small';
@@ -804,10 +815,17 @@ function updateDocStatusDisplay(card){
       toggleBtn.className='btn-small';
       toggleBtn.textContent='🔗 Ver link';
       toggleBtn.onclick=()=>{
-        linkSection.style.display=linkSection.style.display==='none'?'block':'none';
-        toggleBtn.textContent=linkSection.style.display==='none'?'🔗 Ver link':'🔗 Ocultar link';
+        if(linkSection.style.display==='none'||linkSection.style.display===''){
+          linkSection.style.display='block';
+          toggleBtn.textContent='🔗 Ocultar link';
+        }else{
+          linkSection.style.display='none';
+          toggleBtn.textContent='🔗 Ver link';
+        }
       };
       statusArea.appendChild(toggleBtn);
+      
+      linkSection.style.display='none';
     }else{
       const btnPaste=document.createElement('button');
       btnPaste.className='btn-small';
@@ -1032,7 +1050,6 @@ $("#btnExport")?.addEventListener('click',async()=>{
   }
   
   try{
-    const docType=currentPreviewDoc==='INF'?'Informe':'Receta';
     const html=currentPreviewDoc==='INF'?buildReportHTML(currentPreviewCard):buildRecipeHTML(currentPreviewCard);
     
     const tempDiv=document.createElement('div');
@@ -1058,7 +1075,8 @@ $("#btnExport")?.addEventListener('click',async()=>{
     const patientId=$("#patient_id")?.value||'SinID';
     const dateObj=new Date(currentPreviewCard.querySelector('.visit-date').value);
     const ddmmyy=`${String(dateObj.getDate()).padStart(2,'0')}${String(dateObj.getMonth()+1).padStart(2,'0')}${String(dateObj.getFullYear()).slice(-2)}`;
-    const filename=`${patientId}-consulta-${ddmmyy}.png`;
+    const docType=currentPreviewDoc==='INF'?'inf':'rp';
+    const filename=`${patientId}-${docType}-${ddmmyy}.png`;
     
     canvas.toBlob(blob=>{
       const url=URL.createObjectURL(blob);
