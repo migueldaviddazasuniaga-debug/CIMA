@@ -79,6 +79,7 @@ ul.compact li{margin:0;padding:0}
 .doc-sign{position:absolute;left:0;right:0;bottom:120px;text-align:center}
 .doc-sign img{max-width:260px;display:inline-block}
 .doc-badge{display:inline-block;background:#28a745;color:#fff;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.doc-badge.emitido{background:#28a745;cursor:default}
 .hidden{display:none!important}
 .visit-body.hidden{display:none!important}
 .visit-head-toggle{display:flex;gap:4px;flex:0 1 auto}
@@ -96,6 +97,13 @@ ul.compact li{margin:0;padding:0}
 .btn-secondary{background:#6c757d;color:#fff;border:none;padding:8px 16px;border-radius:4px;cursor:pointer;font-size:10pt}
 .btn-secondary:hover{background:#5a6268}
 .btn-collapse{padding:4px 8px!important;font-size:11px!important;margin-right:4px!important}
+.btn-small{padding:4px 8px;font-size:9pt;border-radius:4px;border:1px solid #ddd;background:#fff;cursor:pointer;transition:all .2s}
+.btn-small:hover{background:#f0f0f0}
+.btn-small img{width:14px;height:14px;vertical-align:middle;filter:brightness(0)}
+
+.doc-link-section{margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;border:1px solid #e0e0e0}
+.doc-link-text{font-size:9pt;color:#007bff;word-break:break-all;margin-bottom:6px}
+.doc-actions{display:flex;gap:6px;flex-wrap:wrap}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center}
 .modal-overlay.active{display:flex}
@@ -254,6 +262,51 @@ ul.compact li{margin:0;padding:0}
   </div>
 </div>
 
+<div id="linkPasteModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">Pegar link del documento</div>
+    <div class="modal-body">
+      <label class="form-label">Link del PDF desde Supabase:</label>
+      <input type="text" id="linkPasteInput" class="form-input" placeholder="Pega el link aquí...">
+      <div class="small" style="margin-top:8px;color:#666">El link se copiará automáticamente cuando generes el PDF en el convertidor.</div>
+    </div>
+    <div class="modal-footer">
+      <button id="btnCancelPaste" class="btn-secondary">Cancelar</button>
+      <button id="btnConfirmPaste" class="btn-primary">Guardar link</button>
+    </div>
+  </div>
+</div>
+
+<div id="whatsappModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">Enviar por WhatsApp</div>
+    <div class="modal-body">
+      <label class="form-label">Teléfono del paciente:</label>
+      <input type="text" id="whatsappPhone" class="form-input" placeholder="+58 424 1090979">
+      <div class="small" style="margin-top:8px;color:#666">Puedes editar el número antes de enviar.</div>
+    </div>
+    <div class="modal-footer">
+      <button id="btnCancelWhatsApp" class="btn-secondary">Cancelar</button>
+      <button id="btnSendWhatsApp" class="btn-primary">Enviar WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<div id="emailModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">Enviar por Email</div>
+    <div class="modal-body">
+      <label class="form-label">Email del paciente:</label>
+      <input type="email" id="emailAddress" class="form-input" placeholder="paciente@email.com">
+      <div class="small" style="margin-top:8px;color:#666">Puedes editar el email antes de enviar.</div>
+    </div>
+    <div class="modal-footer">
+      <button id="btnCancelEmail" class="btn-secondary">Cancelar</button>
+      <button id="btnSendEmail" class="btn-primary">Enviar Email</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://migueldaviddazasuniaga-debug.github.io/CIMA/cima-data.js"></script>
@@ -274,6 +327,8 @@ const TPL={
   'firma-no':`${CDN_BASE}/firma-no.png`
 };
 
+let currentLinkCard=null;
+
 window.toggleVisitBody=function(cardId){
   const card=document.getElementById(cardId);
   if(!card)return;
@@ -293,6 +348,8 @@ window.openConverter=function(){
 'use strict';
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
+window.$=$;
+window.$$=$$;
 
 function flash(msg,isError=false){
   const e=$("#err");
@@ -318,6 +375,12 @@ function fmtDate(iso){
   if(!iso)return'';
   const d=new Date(iso);
   return`${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
+function fmtDateShort(iso){
+  if(!iso)return'';
+  const d=new Date(iso);
+  return`${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 
 function fmtDateTime(iso){
@@ -611,11 +674,13 @@ function visitCard(type='Primera'){
     const sx=$("#sex")?.value==='Masculino'?'masculino':($("#sex")?.value==='Femenino'?'femenino':'[sexo]');
     return`Paciente ${sx} de ${age} quien acude a consulta por presentar [Motivo de consulta].`;
   })();
-  wrap.innerHTML=`<div class="row" style="align-items:center"><div class="col visit-head-toggle"><button type="button" class="btn-collapse btn-ghost" onclick="toggleVisitBody('${cardId}')">▼</button></div><div class="col" style="flex:0 1 120px"><span class="badge">${type}</span></div><div class="col" style="flex:0 1 220px"><label class="form-label">Fecha</label><input type="datetime-local" class="form-input visit-date" value="${getLocalDateTime()}"></div><div class="col" style="flex:0 1 auto;display:flex;gap:4px;align-items:center"><span class="doc-badge doc-badge-inf hidden" title="Informe emitido">✓ INF</span><span class="doc-badge doc-badge-rp hidden" title="Recipe emitido">✓ RP</span></div><div class="col" style="flex:1 1 auto;text-align:right"><button type="button" class="btn-ghost btn-inf"><img src="${CDN_BASE}/informe.svg" alt="" style="width:18px;height:18px;vertical-align:middle;filter:brightness(0)"></button><button type="button" class="btn-ghost btn-rp"><img src="${CDN_BASE}/rp.svg" alt="" style="width:18px;height:18px;vertical-align:middle;filter:brightness(0)"></button></div></div><div class="visit-body"><div class="row"><div class="col"><label class="form-label">Enfermedad actual</label><textarea class="form-input txt-ea" rows="3">${eaAuto}</textarea></div></div><div class="row"><div class="col"><label class="form-label">Motivo(s) de consulta</label><input class="form-input txt-motivo" placeholder="(texto libre opcional)"><div class="chips chips-motivo" style="margin-top:4px"></div></div></div><div class="row"><div class="col"><label class="form-label">Antecedentes personales</label><input class="form-input txt-ap" placeholder="(línea libre)…"><div class="chips chips-ap" style="margin-top:4px"></div></div><div class="col"><label class="form-label">Antecedentes familiares</label><input class="form-input txt-af" placeholder="(línea libre)…"><div class="chips chips-af" style="margin-top:4px"></div></div></div><div class="row"><div class="col"><label class="form-label">Hábitos psicobiológicos</label><input class="form-input txt-hab" placeholder="(tabaco, alcohol, café, sueño, etc.)"></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700;margin:6px 0">Examen físico (activar si aplica)</div><div class="small"><input type="checkbox" class="pe-toggle"> Mostrar examen físico</div><div class="pe-panels hidden"></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700;margin:6px 0">Estudios (seleccione y se despliegan)</div><div class="study-picker"></div><div class="study-panels-wrap hidden"><div class="studies-panels"></div></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Diagnóstico</div><input class="form-input txt-dx" placeholder="(se llena con chips + libre)"><div class="chips chips-dx" style="margin-top:4px"></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Recipe</div><textarea class="form-input txt-recipe" rows="4" placeholder="(seleccione medicamentos)"></textarea><div class="recipe-chips-container" style="margin-top:6px"></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Indicaciones</div><div class="indicaciones-dropdowns" style="margin:6px 0"></div><textarea class="form-input txt-indicaciones" rows="6" placeholder="(se generan automáticamente)"></textarea></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Plan / Tratamiento</div><textarea class="form-input txt-plan" rows="8" placeholder="(se genera automáticamente)"></textarea></div></div></div>`;
+  wrap.innerHTML=`<div class="row" style="align-items:center"><div class="col visit-head-toggle"><button type="button" class="btn-collapse btn-ghost" onclick="toggleVisitBody('${cardId}')">▼</button></div><div class="col" style="flex:0 1 120px"><span class="badge">${type}</span></div><div class="col" style="flex:0 1 220px"><label class="form-label">Fecha</label><input type="datetime-local" class="form-input visit-date" value="${getLocalDateTime()}"></div><div class="col doc-status-area" style="flex:1 1 auto;display:flex;gap:6px;align-items:center;justify-content:flex-end"></div><div class="col" style="flex:0 0 auto;text-align:right"><button type="button" class="btn-ghost btn-inf"><img src="${CDN_BASE}/informe.svg" alt="" style="width:18px;height:18px;vertical-align:middle;filter:brightness(0)"></button><button type="button" class="btn-ghost btn-rp"><img src="${CDN_BASE}/rp.svg" alt="" style="width:18px;height:18px;vertical-align:middle;filter:brightness(0)"></button></div></div><div class="visit-body"><div class="row"><div class="col"><label class="form-label">Enfermedad actual</label><textarea class="form-input txt-ea" rows="3">${eaAuto}</textarea></div></div><div class="row"><div class="col"><label class="form-label">Motivo(s) de consulta</label><input class="form-input txt-motivo" placeholder="(texto libre opcional)"><div class="chips chips-motivo" style="margin-top:4px"></div></div></div><div class="row"><div class="col"><label class="form-label">Antecedentes personales</label><input class="form-input txt-ap" placeholder="(línea libre)…"><div class="chips chips-ap" style="margin-top:4px"></div></div><div class="col"><label class="form-label">Antecedentes familiares</label><input class="form-input txt-af" placeholder="(línea libre)…"><div class="chips chips-af" style="margin-top:4px"></div></div></div><div class="row"><div class="col"><label class="form-label">Hábitos psicobiológicos</label><input class="form-input txt-hab" placeholder="(tabaco, alcohol, café, sueño, etc.)"></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700;margin:6px 0">Examen físico (activar si aplica)</div><div class="small"><input type="checkbox" class="pe-toggle"> Mostrar examen físico</div><div class="pe-panels hidden"></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700;margin:6px 0">Estudios (seleccione y se despliegan)</div><div class="study-picker"></div><div class="study-panels-wrap hidden"><div class="studies-panels"></div></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Diagnóstico</div><input class="form-input txt-dx" placeholder="(se llena con chips + libre)"><div class="chips chips-dx" style="margin-top:4px"></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Recipe</div><textarea class="form-input txt-recipe" rows="4" placeholder="(seleccione medicamentos)"></textarea><div class="recipe-chips-container" style="margin-top:6px"></div></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Indicaciones</div><div class="indicaciones-dropdowns" style="margin:6px 0"></div><textarea class="form-input txt-indicaciones" rows="6" placeholder="(se generan automáticamente)"></textarea></div></div><div class="row"><div class="col"><div class="small" style="font-weight:700">Plan / Tratamiento</div><textarea class="form-input txt-plan" rows="8" placeholder="(se genera automáticamente)"></textarea></div></div></div>`;
+  
   addChips(wrap.querySelector('.chips-motivo'),window.CIMA_DATA.MOTIVOS);
   addChips(wrap.querySelector('.chips-ap'),window.CIMA_DATA.ANTECEDENTES);
   addChips(wrap.querySelector('.chips-af'),window.CIMA_DATA.ANTECEDENTES);
   addChips(wrap.querySelector('.chips-dx'),window.CIMA_DATA.DX);
+  
   wrap.addEventListener('chip-toggle',(ev)=>{
     const trg=ev.target;
     if(trg.closest('.chips-motivo'))syncChipGroupToInput(wrap,'.chips-motivo','.txt-motivo');
@@ -623,14 +688,17 @@ function visitCard(type='Primera'){
     if(trg.closest('.chips-af'))syncChipGroupToInput(wrap,'.chips-af','.txt-af');
     if(trg.closest('.chips-dx'))syncChipGroupToInput(wrap,'.chips-dx','.txt-dx');
   });
+  
   ['.txt-motivo','.txt-ap','.txt-af','.txt-dx'].forEach(sel=>{
     const el=wrap.querySelector(sel);
     if(el)el.addEventListener('input',()=>el.dataset.freeText=el.value);
   });
+  
   makeRecipeChipsGrouped(wrap.querySelector('.recipe-chips-container'),wrap);
   wrap.querySelector('.txt-recipe')?.addEventListener('input',function(){this.dataset.userEdited='1'});
   wrap.querySelector('.txt-indicaciones')?.addEventListener('input',function(){this.dataset.userEdited='1';updatePlanTratamiento(wrap)});
   wrap.querySelector('.txt-plan')?.addEventListener('input',function(){this.dataset.userEdited='1'});
+  
   const peWrap=wrap.querySelector('.pe-panels');
   const peToggle=wrap.querySelector('.pe-toggle');
   peToggle.addEventListener('change',()=>{
@@ -641,6 +709,7 @@ function visitCard(type='Primera'){
       peWrap.classList.add('hidden');
     }
   });
+  
   const sp=wrap.querySelector('.study-picker');
   const spWrap=wrap.querySelector('.study-panels-wrap');
   const spPanels=wrap.querySelector('.studies-panels');
@@ -666,18 +735,185 @@ function visitCard(type='Primera'){
     });
     sp.appendChild(c);
   });
+  
   wrap.querySelector('.btn-inf').addEventListener('click',()=>{
-    wrap.querySelector('.doc-badge-inf')?.classList.remove('hidden');
     if(currentPreviewDoc==='INF'&&currentPreviewCard===wrap)closePreview();
     else openDoc('INF',wrap);
   });
+  
   wrap.querySelector('.btn-rp').addEventListener('click',()=>{
-    wrap.querySelector('.doc-badge-rp')?.classList.remove('hidden');
     if(currentPreviewDoc==='RP'&&currentPreviewCard===wrap)closePreview();
     else openDoc('RP',wrap);
   });
+  
+  updateDocStatusDisplay(wrap);
+  
   return wrap;
 }
+
+function updateDocStatusDisplay(card){
+  const statusArea=card.querySelector('.doc-status-area');
+  if(!statusArea)return;
+  
+  statusArea.innerHTML='';
+  
+  if(card.dataset.documentoEmitido==='true'){
+    const fecha=card.dataset.fechaEmisionDocumento;
+    const badge=document.createElement('span');
+    badge.className='doc-badge emitido';
+    badge.title=`Documento emitido: ${fmtDateTime(fecha)}`;
+    badge.textContent=`✓ DOC (${fmtDateShort(fecha)})`;
+    statusArea.appendChild(badge);
+    
+    if(card.dataset.documentoPdfUrl){
+      const linkSection=document.createElement('div');
+      linkSection.className='doc-link-section';
+      linkSection.style.display='none';
+      
+      const linkText=document.createElement('div');
+      linkText.className='doc-link-text';
+      linkText.textContent=card.dataset.documentoPdfUrl;
+      linkSection.appendChild(linkText);
+      
+      const actions=document.createElement('div');
+      actions.className='doc-actions';
+      
+      const btnWhatsApp=document.createElement('button');
+      btnWhatsApp.className='btn-small';
+      btnWhatsApp.innerHTML=`<img src="${CDN_BASE}/whatsapp.svg"> WhatsApp`;
+      btnWhatsApp.onclick=()=>openWhatsAppModal(card);
+      actions.appendChild(btnWhatsApp);
+      
+      const btnEmail=document.createElement('button');
+      btnEmail.className='btn-small';
+      btnEmail.innerHTML=`<img src="${CDN_BASE}/enviar.svg"> Email`;
+      btnEmail.onclick=()=>openEmailModal(card);
+      actions.appendChild(btnEmail);
+      
+      const btnDownload=document.createElement('button');
+      btnDownload.className='btn-small';
+      btnDownload.innerHTML=`<img src="${CDN_BASE}/descargar.svg"> Descargar`;
+      btnDownload.onclick=()=>window.open(card.dataset.documentoPdfUrl,'_blank');
+      actions.appendChild(btnDownload);
+      
+      linkSection.appendChild(actions);
+      
+      card.querySelector('.visit-body')?.appendChild(linkSection);
+      
+      const toggleBtn=document.createElement('button');
+      toggleBtn.className='btn-small';
+      toggleBtn.textContent='🔗 Ver link';
+      toggleBtn.onclick=()=>{
+        linkSection.style.display=linkSection.style.display==='none'?'block':'none';
+        toggleBtn.textContent=linkSection.style.display==='none'?'🔗 Ver link':'🔗 Ocultar link';
+      };
+      statusArea.appendChild(toggleBtn);
+    }else{
+      const btnPaste=document.createElement('button');
+      btnPaste.className='btn-small';
+      btnPaste.innerHTML=`📎 Pegar link`;
+      btnPaste.onclick=()=>openPasteLinkModal(card);
+      statusArea.appendChild(btnPaste);
+    }
+  }
+}
+
+function openPasteLinkModal(card){
+  currentLinkCard=card;
+  $('#linkPasteInput').value='';
+  $('#linkPasteModal').classList.add('active');
+}
+
+$('#btnCancelPaste')?.addEventListener('click',()=>{
+  $('#linkPasteModal').classList.remove('active');
+  currentLinkCard=null;
+});
+
+$('#btnConfirmPaste')?.addEventListener('click',async()=>{
+  const link=$('#linkPasteInput').value.trim();
+  if(!link){
+    showErr('Pega el link del PDF');
+    return;
+  }
+  
+  if(currentLinkCard){
+    currentLinkCard.dataset.documentoPdfUrl=link;
+    updateDocStatusDisplay(currentLinkCard);
+    await autoSaveToLocalStorage();
+    flash('Link guardado correctamente');
+  }
+  
+  $('#linkPasteModal').classList.remove('active');
+  currentLinkCard=null;
+});
+
+function openWhatsAppModal(card){
+  currentLinkCard=card;
+  const phone=$('#phone')?.value||'';
+  $('#whatsappPhone').value=phone;
+  $('#whatsappModal').classList.add('active');
+}
+
+$('#btnCancelWhatsApp')?.addEventListener('click',()=>{
+  $('#whatsappModal').classList.remove('active');
+  currentLinkCard=null;
+});
+
+$('#btnSendWhatsApp')?.addEventListener('click',()=>{
+  const phone=$('#whatsappPhone').value.trim();
+  if(!phone){
+    showErr('Ingrese un número de teléfono');
+    return;
+  }
+  
+  const link=currentLinkCard?.dataset.documentoPdfUrl;
+  const nombre=$('#full_name')?.value||'Paciente';
+  const fecha=fmtDate(currentLinkCard?.querySelector('.visit-date')?.value);
+  
+  const mensaje=`Hola ${nombre},\n\nAdjunto documento de su consulta del ${fecha}:\n\n🔗 ${link}\n\nDisponible por 7 días.\n\nDra. Valentina González Yanez\nORL - Hospital de Clínicas Caracas`;
+  
+  const phoneClean=phone.replace(/[^0-9]/g,'');
+  const whatsappUrl=`https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+  window.open(whatsappUrl,'_blank');
+  
+  flash('WhatsApp abierto');
+  $('#whatsappModal').classList.remove('active');
+  currentLinkCard=null;
+});
+
+function openEmailModal(card){
+  currentLinkCard=card;
+  const email=$('#email')?.value||'';
+  $('#emailAddress').value=email;
+  $('#emailModal').classList.add('active');
+}
+
+$('#btnCancelEmail')?.addEventListener('click',()=>{
+  $('#emailModal').classList.remove('active');
+  currentLinkCard=null;
+});
+
+$('#btnSendEmail')?.addEventListener('click',()=>{
+  const email=$('#emailAddress').value.trim();
+  if(!email){
+    showErr('Ingrese un email');
+    return;
+  }
+  
+  const link=currentLinkCard?.dataset.documentoPdfUrl;
+  const nombre=$('#full_name')?.value||'Paciente';
+  const fecha=fmtDate(currentLinkCard?.querySelector('.visit-date')?.value);
+  
+  const asunto=`Documentos médicos - Consulta del ${fecha}`;
+  const mensaje=`Estimado/a ${nombre},\n\nAdjunto los documentos de su consulta del día ${fecha}:\n\n🔗 Descargar documento: ${link}\n\nEl enlace estará disponible por 7 días.\n\n---\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
+  
+  const mailtoLink=`mailto:${email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensaje)}`;
+  window.open(mailtoLink,'_blank');
+  
+  flash('Email preparado');
+  $('#emailModal').classList.remove('active');
+  currentLinkCard=null;
+});
 
 function patientLine(){
   const name=$("#full_name")?.value||'—';
@@ -817,9 +1053,9 @@ $("#btnExport")?.addEventListener('click',async()=>{
     document.body.removeChild(tempDiv);
     
     const patientId=$("#patient_id")?.value||'SinID';
-    const now=new Date();
-    const fecha=`${String(now.getDate()).padStart(2,'0')}${String(now.getMonth()+1).padStart(2,'0')}${now.getFullYear()}`;
-    const filename=`${patientId}-${docType}-${fecha}.png`;
+    const dateObj=new Date(currentPreviewCard.querySelector('.visit-date').value);
+    const ddmmyy=`${String(dateObj.getDate()).padStart(2,'0')}${String(dateObj.getMonth()+1).padStart(2,'0')}${String(dateObj.getFullYear()).slice(-2)}`;
+    const filename=`${patientId}-consulta-${ddmmyy}.png`;
     
     canvas.toBlob(blob=>{
       const url=URL.createObjectURL(blob);
@@ -830,6 +1066,11 @@ $("#btnExport")?.addEventListener('click',async()=>{
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      currentPreviewCard.dataset.documentoEmitido='true';
+      currentPreviewCard.dataset.fechaEmisionDocumento=new Date().toISOString();
+      updateDocStatusDisplay(currentPreviewCard);
+      autoSaveToLocalStorage();
       
       $("#pngFilename").textContent=filename;
       $("#exportModal").classList.add('active');
@@ -880,6 +1121,9 @@ function serializeCurrentState(){
       indicaciones_text:card.querySelector('.txt-indicaciones')?.value||'',
       indicaciones_data:card.indicacionesData||{},
       plan_text:card.querySelector('.txt-plan')?.value||'',
+      documento_emitido:card.dataset.documentoEmitido==='true',
+      fecha_emision_documento:card.dataset.fechaEmisionDocumento||null,
+      documento_pdf_url:card.dataset.documentoPdfUrl||null,
       studies:[]
     };
     card.querySelectorAll('.studies-panels .study-panel').forEach(panel=>{
@@ -978,7 +1222,7 @@ function bindSearchModal(){
   document.addEventListener('keydown',(e)=>{if(e.key==='Escape'&&$('#searchModal').classList.contains('active'))closeSearchModal()});
 }
 
-function autoSaveToLocalStorage(){
+async function autoSaveToLocalStorage(){
   try{
     const data=serializeCurrentState();
     if(data.patient.patient_id||data.patient.full_name){
@@ -1187,6 +1431,15 @@ function renderHCFromJSON(data){
         txtPlan.dataset.userEdited='1';
       }
     }
+    
+    if(vdata.documento_emitido){
+      card.dataset.documentoEmitido='true';
+      card.dataset.fechaEmisionDocumento=vdata.fecha_emision_documento;
+      if(vdata.documento_pdf_url){
+        card.dataset.documentoPdfUrl=vdata.documento_pdf_url;
+      }
+      updateDocStatusDisplay(card);
+    }
   });
 }
 document.addEventListener('DOMContentLoaded',async()=>{
@@ -1213,7 +1466,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
         }
       }catch(err){console.error('Error cargando autoguardado:',err)}
     }
-    flash('Sistema CIMA listo - Exporta PNG + Convertidor');
+    flash('✅ CIMA listo - Sistema completo con documentos persistentes');
   }catch(ex){showErr('Error al iniciar: '+ex.message)}
 });
 
