@@ -344,6 +344,7 @@
         let generatedPDFUrl = null;
         let shortUrl = null;
         let supabase = null;
+        let pdfFileName = '';
 
         // Inicializar Supabase
         (async function initSupabase() {
@@ -386,10 +387,11 @@
                 list.appendChild(item);
             });
 
-            // Extraer info del primer archivo: ID-consulta-DDMMYY.png
+            // Extraer nombre del primer archivo
             if (selectedFiles.length > 0) {
                 const firstName = selectedFiles[0].name.replace('.png', '');
-                document.getElementById('previewFilename').textContent = `${fileName}.pdf`;
+                pdfFileName = `${firstName}.pdf`;
+                document.getElementById('previewFilename').textContent = pdfFileName;
             }
 
             document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex' : 'none';
@@ -404,12 +406,6 @@
             document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
             document.getElementById('step2').classList.add('active');
             showPreview();
-            
-            // Extraer nombre del archivo
-            if (selectedFiles.length > 0) {
-                const firstName = selectedFiles[0].name.replace('.png', '');
-                document.getElementById('previewFilename').textContent = `${firstName}.pdf`;
-            }
         }
 
         function goToStep3() {
@@ -434,14 +430,15 @@
         }
 
         async function createAndUploadPDF() {
+            if (!pdfFileName) {
+                showStatus('Error: nombre de archivo no definido', 'error');
+                return;
+            }
+
             log('Iniciando generación de PDF...');
             showStatus('Generando PDF...', 'info');
 
             try {
-                // Extraer nombre del archivo base
-                const firstName = selectedFiles[0].name.replace('.png', '');
-                const pdfFileName = `${firstName}.pdf`;
-                
                 log(`Nombre del archivo: ${pdfFileName}`);
 
                 const pdf = new jsPDF({
@@ -523,7 +520,7 @@
                 showStatus('Subiendo PDF a Supabase...', 'info');
                 
                 // Extraer ID del paciente del nombre del archivo
-                const patientId = firstName.split('-')[0]; // V-12345
+                const patientId = pdfFileName.split('-')[0]; // V-12345
                 const supabasePath = `${patientId}/${pdfFileName}`;
                 
                 log(`Subiendo a: ${supabasePath}`);
