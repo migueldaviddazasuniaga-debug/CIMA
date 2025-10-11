@@ -530,9 +530,21 @@
 
             if (selectedFiles.length > 0) {
                 const firstName = selectedFiles[0].name.replace('.png', '');
-                pdfFileName = `${firstName.split('-')[0]}-consulta-${firstName.split('-').pop()}.pdf`;
+                const parts = firstName.split('-');
+
+                // Buscamos los índices de las partes conocidas
+                const tipoIndex = parts.findIndex(p => p === 'inf' || p === 'rp');
+                const fecha = parts[parts.length - 1];
+
+                // El ID puede tener un guion interno, así que tomamos todo hasta el tipo (excluyendo tipo y fecha)
+                const id = tipoIndex > 0 ? parts.slice(0, tipoIndex).join('-') : parts[0];
+
+                // Construimos el nombre final
+                const pdfFileName = `${id}-consulta-${fecha}.pdf`;
+
                 document.getElementById('previewFilename').textContent = pdfFileName;
                 log(`Nombre PDF: ${pdfFileName}`);
+                
             }
 
             document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex' : 'none';
