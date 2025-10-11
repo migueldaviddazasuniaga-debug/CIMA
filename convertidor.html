@@ -7,342 +7,54 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f5f7fa;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-
-        .header {
-            background: white;
-            padding: 20px 30px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-        .header h1 {
-            color: #1a1a1a;
-            font-size: 24px;
-            font-weight: 600;
-        }
-
-        .step {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            display: none;
-        }
-
-        .step.active {
-            display: block;
-        }
-
-        .step-header {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #e5e7eb;
-        }
-
-        .step-number {
-            width: 40px;
-            height: 40px;
-            background: #3b82f6;
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        .step-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #1a1a1a;
-        }
-
-        .upload-zone {
-            border: 2px dashed #d1d5db;
-            border-radius: 8px;
-            padding: 60px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .upload-zone:hover {
-            border-color: #3b82f6;
-            background: #f0f9ff;
-        }
-
-        .upload-zone input {
-            display: none;
-        }
-
-        .image-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
-            margin: 20px 0;
-        }
-
-        .image-item {
-            background: #f9fafb;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            word-break: break-all;
-            border: 1px solid #e5e7eb;
-        }
-
-        .preview-container {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            padding: 20px;
-            background: #fafafa;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-
-        .preview-container img {
-            width: 100%;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-
-        .btn-secondary {
-            background: #6b7280;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #4b5563;
-        }
-
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        .info-box {
-            background: #e0f2fe;
-            border-left: 4px solid #0284c7;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 15px 0;
-            font-size: 14px;
-            color: #0c4a6e;
-        }
-
-        .status {
-            padding: 12px;
-            border-radius: 6px;
-            margin: 15px 0;
-            font-size: 14px;
-        }
-
-        .status.success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .status.error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        .status.info {
-            background: #e0f2fe;
-            color: #0c4a6e;
-        }
-
-        .link-box {
-            background: #f0f9ff;
-            border: 2px solid #3b82f6;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: center;
-        }
-
-        .link-box .link-url {
-            font-size: 16px;
-            font-weight: 600;
-            color: #1e40af;
-            word-break: break-all;
-            margin: 10px 0;
-            padding: 10px;
-            background: white;
-            border-radius: 4px;
-        }
-
-        .copy-btn {
-            background: #10b981;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            margin-top: 10px;
-        }
-
-        .copy-btn:hover {
-            background: #059669;
-        }
-
-        .debug-log {
-            background: #1f2937;
-            color: #10b981;
-            padding: 15px;
-            border-radius: 6px;
-            margin: 15px 0;
-            font-family: monospace;
-            font-size: 12px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-
-        .debug-log div {
-            margin-bottom: 5px;
-        }
-
-        .share-option {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all .2s;
-            margin-bottom: 12px;
-        }
-
-        .share-option:hover {
-            border-color: #3b82f6;
-            background: #f0f7ff;
-        }
-
-        .share-option img {
-            width: 32px;
-            height: 32px;
-        }
-
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0,0,0,.7);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal-box {
-            background: #fff;
-            border-radius: 8px;
-            padding: 24px;
-            max-width: 450px;
-            width: 90%;
-            box-shadow: 0 8px 32px rgba(0,0,0,.3);
-        }
-
-        .modal-header {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 16px;
-            color: #333;
-        }
-
-        .modal-body {
-            margin: 16px 0;
-        }
-
-        .modal-footer {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-
-        .form-label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 6px;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 14px;
-            margin-bottom: 12px;
-        }
-
-        .small {
-            font-size: 13px;
-            color: #666;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { background: white; padding: 20px 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header h1 { color: #1a1a1a; font-size: 24px; font-weight: 600; }
+        .step { background: white; padding: 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none; }
+        .step.active { display: block; }
+        .step-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb; }
+        .step-number { width: 40px; height: 40px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; }
+        .step-title { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+        .upload-zone { border: 2px dashed #d1d5db; border-radius: 8px; padding: 60px; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-zone:hover { border-color: #3b82f6; background: #f0f9ff; }
+        .upload-zone input { display: none; }
+        .image-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 20px 0; }
+        .image-item { background: #f9fafb; padding: 10px; border-radius: 6px; font-size: 13px; word-break: break-all; border: 1px solid #e5e7eb; }
+        .preview-container { border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; background: #fafafa; max-height: 600px; overflow-y: auto; }
+        .preview-container img { width: 100%; margin-bottom: 20px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .btn { padding: 12px 24px; border: none; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .btn-secondary:hover { background: #4b5563; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .button-group { display: flex; gap: 10px; margin-top: 20px; }
+        .info-box { background: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; border-radius: 6px; margin: 15px 0; font-size: 14px; color: #0c4a6e; }
+        .status { padding: 12px; border-radius: 6px; margin: 15px 0; font-size: 14px; }
+        .status.success { background: #d1fae5; color: #065f46; }
+        .status.error { background: #fee2e2; color: #991b1b; }
+        .status.info { background: #e0f2fe; color: #0c4a6e; }
+        .link-box { background: #f0f9ff; border: 2px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+        .link-box .link-url { font-size: 16px; font-weight: 600; color: #1e40af; word-break: break-all; margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
+        .copy-btn { background: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px; }
+        .copy-btn:hover { background: #059669; }
+        .debug-log { background: #1f2937; color: #10b981; padding: 15px; border-radius: 6px; margin: 15px 0; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
+        .debug-log div { margin-bottom: 5px; }
+        .share-option { display: flex; align-items: center; gap: 12px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all .2s; margin-bottom: 12px; }
+        .share-option:hover { border-color: #3b82f6; background: #f0f7ff; }
+        .share-option img { width: 32px; height: 32px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 2000; display: none; align-items: center; justify-content: center; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: #fff; border-radius: 8px; padding: 24px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
+        .modal-header { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #333; }
+        .modal-body { margin: 16px 0; }
+        .modal-footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; color: #555; margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; margin-bottom: 12px; }
+        .small { font-size: 13px; color: #666; }
     </style>
 </head>
 <body>
@@ -514,6 +226,7 @@
             console.log(msg);
         }
 
+        // ======== BLOQUE PARCHEADO ========
         function handleFiles(e) {
             selectedFiles = Array.from(e.target.files).filter(f => f.type === 'image/png');
             log(`Archivos seleccionados: ${selectedFiles.length}`);
@@ -529,26 +242,27 @@
             });
 
             if (selectedFiles.length > 0) {
-                const firstName = selectedFiles[0].name.replace('.png', '');
+                // Soporta .png o .PNG
+                const firstName = selectedFiles[0].name.replace(/\.png$/i, '');
                 const parts = firstName.split('-');
 
-                // Buscamos los índices de las partes conocidas
+                // Detecta tipo (inf/rp) si existe
                 const tipoIndex = parts.findIndex(p => p === 'inf' || p === 'rp');
-                const fecha = parts[parts.length - 1];
+                const fecha = parts[parts.length - 1] || 'sin-fecha';
 
-                // El ID puede tener un guion interno, así que tomamos todo hasta el tipo (excluyendo tipo y fecha)
-                const id = tipoIndex > 0 ? parts.slice(0, tipoIndex).join('-') : parts[0];
+                // Si existe tipo, id = todo antes del tipo; si no, id = todo menos la última (fecha)
+                const id = (tipoIndex > 0 ? parts.slice(0, tipoIndex) : parts.slice(0, parts.length - 1)).join('-') || parts[0];
 
-                // Construimos el nombre final
-                const pdfFileName = `${id}-consulta-${fecha}.pdf`;
+                // ⚠️ IMPORTANTE: asignar a la variable GLOBAL, no redeclarar
+                pdfFileName = `${id}-consulta-${fecha}.pdf`;
 
                 document.getElementById('previewFilename').textContent = pdfFileName;
                 log(`Nombre PDF: ${pdfFileName}`);
-                
             }
 
             document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex' : 'none';
         }
+        // ======== FIN PARCHE ========
 
         function goToStep1() {
             document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
