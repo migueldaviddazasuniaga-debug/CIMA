@@ -101,11 +101,6 @@ ul.compact li{margin:0;padding:0}
 .btn-small:hover{background:#f0f0f0}
 .btn-small img{width:14px;height:14px;vertical-align:middle;filter:brightness(0)}
 
-.doc-link-section{margin-top:8px;padding:8px;background:#f9f9f9;border-radius:4px;border:1px solid #e0e0e0}
-.doc-link-text{font-size:9pt;color:#007bff;word-break:break-all;margin-bottom:6px;cursor:pointer;padding:6px;background:#fff;border-radius:3px}
-.doc-link-text:hover{background:#f0f7ff}
-.doc-actions{display:none;gap:6px;flex-wrap:wrap;margin-top:6px}
-
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2000;display:none;align-items:center;justify-content:center}
 .modal-overlay.active{display:flex}
 .modal-box{background:#fff;border-radius:8px;padding:24px;max-width:500px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,.3)}
@@ -271,6 +266,40 @@ ul.compact li{margin:0;padding:0}
     <div class="modal-footer">
       <button id="btnCancelPaste" class="btn-secondary">Cancelar</button>
       <button id="btnConfirmPaste" class="btn-primary">Guardar link</button>
+    </div>
+  </div>
+</div>
+
+<div id="shareModal" class="modal-overlay">
+  <div class="modal-box" style="max-width:400px">
+    <div class="modal-header">Compartir documento</div>
+    <div class="modal-body">
+      <div class="export-option" onclick="copyLinkFromShare()">
+        <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/copiar.svg" style="width:32px;height:32px;filter:brightness(0)">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:11pt">Copiar link</div>
+          <div class="small" style="color:#666">Copiar al portapapeles</div>
+        </div>
+      </div>
+
+      <div class="export-option" onclick="shareViaWhatsApp()">
+        <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/whatsapp.svg" style="width:32px;height:32px">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:11pt">Enviar por WhatsApp</div>
+          <div class="small" style="color:#666">Al paciente</div>
+        </div>
+      </div>
+
+      <div class="export-option" onclick="shareViaEmail()">
+        <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/enviar.svg" style="width:32px;height:32px;filter:brightness(0)">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:11pt">Enviar por Email</div>
+          <div class="small" style="color:#666">Al paciente</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="btnCancelShare" class="btn-secondary">Cerrar</button>
     </div>
   </div>
 </div>
@@ -769,63 +798,12 @@ function updateDocStatusDisplay(card){
     statusArea.appendChild(badge);
     
     if(card.dataset.documentoPdfUrl){
-      const linkSection=document.createElement('div');
-      linkSection.className='doc-link-section';
-      
-      const linkText=document.createElement('div');
-      linkText.className='doc-link-text';
-      linkText.textContent=card.dataset.documentoPdfUrl;
-      linkText.onclick=()=>{
-        const actions=linkSection.querySelector('.doc-actions');
-        if(actions.style.display==='none'||actions.style.display===''){
-          actions.style.display='flex';
-        }else{
-          actions.style.display='none';
-        }
-      };
-      linkSection.appendChild(linkText);
-      
-      const actions=document.createElement('div');
-      actions.className='doc-actions';
-      actions.style.display='none';
-      
-      const btnWhatsApp=document.createElement('button');
-      btnWhatsApp.className='btn-small';
-      btnWhatsApp.innerHTML=`<img src="${CDN_BASE}/whatsapp.svg"> WhatsApp`;
-      btnWhatsApp.onclick=()=>openWhatsAppModal(card);
-      actions.appendChild(btnWhatsApp);
-      
-      const btnEmail=document.createElement('button');
-      btnEmail.className='btn-small';
-      btnEmail.innerHTML=`<img src="${CDN_BASE}/enviar.svg"> Email`;
-      btnEmail.onclick=()=>openEmailModal(card);
-      actions.appendChild(btnEmail);
-      
-      const btnDownload=document.createElement('button');
-      btnDownload.className='btn-small';
-      btnDownload.innerHTML=`<img src="${CDN_BASE}/descargar.svg"> Descargar`;
-      btnDownload.onclick=()=>window.open(card.dataset.documentoPdfUrl,'_blank');
-      actions.appendChild(btnDownload);
-      
-      linkSection.appendChild(actions);
-      
-      card.querySelector('.visit-body')?.appendChild(linkSection);
-      
-      const toggleBtn=document.createElement('button');
-      toggleBtn.className='btn-small';
-      toggleBtn.textContent='🔗 Ver link';
-      toggleBtn.onclick=()=>{
-        if(linkSection.style.display==='none'||linkSection.style.display===''){
-          linkSection.style.display='block';
-          toggleBtn.textContent='🔗 Ocultar link';
-        }else{
-          linkSection.style.display='none';
-          toggleBtn.textContent='🔗 Ver link';
-        }
-      };
-      statusArea.appendChild(toggleBtn);
-      
-      linkSection.style.display='none';
+      const linkDisplay=document.createElement('div');
+      linkDisplay.style.cssText='flex:1;background:#f0f7ff;padding:6px 10px;border-radius:4px;border:1px solid #b3d9ff;cursor:pointer;font-size:9pt;color:#0066cc;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px';
+      linkDisplay.textContent=card.dataset.documentoPdfUrl;
+      linkDisplay.title='Click para ver opciones de compartir';
+      linkDisplay.onclick=()=>openShareModal(card);
+      statusArea.appendChild(linkDisplay);
     }else{
       const btnPaste=document.createElement('button');
       btnPaste.className='btn-small';
@@ -864,6 +842,43 @@ $('#btnConfirmPaste')?.addEventListener('click',async()=>{
   $('#linkPasteModal').classList.remove('active');
   currentLinkCard=null;
 });
+
+let currentShareCard=null;
+
+function openShareModal(card){
+  currentShareCard=card;
+  $('#shareModal').classList.add('active');
+}
+
+$('#btnCancelShare')?.addEventListener('click',()=>{
+  $('#shareModal').classList.remove('active');
+  currentShareCard=null;
+});
+
+async function copyLinkFromShare(){
+  if(!currentShareCard)return;
+  const link=currentShareCard.dataset.documentoPdfUrl;
+  try{
+    await navigator.clipboard.writeText(link);
+    flash('Link copiado al portapapeles');
+  }catch(err){
+    showErr('No se pudo copiar. Selecciona el texto manualmente.');
+  }
+  $('#shareModal').classList.remove('active');
+  currentShareCard=null;
+}
+
+function shareViaWhatsApp(){
+  if(!currentShareCard)return;
+  openWhatsAppModal(currentShareCard);
+  $('#shareModal').classList.remove('active');
+}
+
+function shareViaEmail(){
+  if(!currentShareCard)return;
+  openEmailModal(currentShareCard);
+  $('#shareModal').classList.remove('active');
+}
 
 function openWhatsAppModal(card){
   currentLinkCard=card;
@@ -1102,10 +1117,6 @@ $("#btnExport")?.addEventListener('click',async()=>{
     showErr('Error exportando: '+err.message);
     console.error(err);
   }
-});
-
-$("#btnCloseExport")?.addEventListener('click',()=>{
-  $("#exportModal").classList.remove('active');
 });
 function serializeCurrentState(){
   const patient={
@@ -1487,7 +1498,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
         }
       }catch(err){console.error('Error cargando autoguardado:',err)}
     }
-    flash('✅ CIMA listo - Sistema completo con firma en documentos');
+    flash('✅ CIMA listo - Sistema completo con compartir mejorado');
   }catch(ex){showErr('Error al iniciar: '+ex.message)}
 });
 
