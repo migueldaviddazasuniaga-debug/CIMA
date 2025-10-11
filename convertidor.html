@@ -351,7 +351,6 @@
             <h1>Conversor PNG → PDF con Supabase</h1>
         </div>
 
-        <!-- PASO 1: Cargar archivos -->
         <div id="step1" class="step active">
             <div class="step-header">
                 <div class="step-number">1</div>
@@ -377,7 +376,6 @@
             </div>
         </div>
 
-        <!-- PASO 2: Generar PDF -->
         <div id="step2" class="step">
             <div class="step-header">
                 <div class="step-number">2</div>
@@ -398,7 +396,6 @@
             </div>
         </div>
 
-        <!-- PASO 3: Link generado -->
         <div id="step3" class="step">
             <div class="step-header">
                 <div class="step-number">3</div>
@@ -440,7 +437,6 @@
         </div>
     </div>
 
-    <!-- Modal WhatsApp -->
     <div id="whatsappModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">Enviar por WhatsApp</div>
@@ -459,7 +455,6 @@
         </div>
     </div>
 
-    <!-- Modal Email -->
     <div id="emailModal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">Enviar por Email</div>
@@ -483,12 +478,10 @@
 
         const { jsPDF } = window.jspdf;
         let selectedFiles = [];
-        let generatedPDFUrl = null;
         let shortUrl = null;
         let supabase = null;
         let pdfFileName = '';
 
-        // Inicializar Supabase
         (async function initSupabase() {
             let attempts = 0;
             while (!window.supabase && attempts < 50) {
@@ -617,9 +610,7 @@
                     const imgData = await readFileAsDataURL(file);
                     const img = await loadImage(imgData);
                     
-                    if (i > 0) {
-                        pdf.addPage();
-                    }
+                    if (i > 0) pdf.addPage();
 
                     const pageWidth = 215.9;
                     const pageHeight = 279.4;
@@ -678,8 +669,7 @@
 
                 showStatus('☁️ Subiendo PDF a Supabase...', 'info');
                 
-                const patientId = pdfFileName.split('-')[0];
-                const supabasePath = `${patientId}/${pdfFileName}`;
+                const supabasePath = `dr/vgy/consulta/${pdfFileName}`;
                 
                 log(`📤 Subiendo a: ${supabasePath}`);
                 
@@ -817,7 +807,8 @@
             status.className = `status ${type}`;
             status.textContent = msg;
             status.style.display = 'block';
-        }
-    </script>
+        }​​​​​​​​​​​​​​​​
+
+</script>
 </body>
 </html>
