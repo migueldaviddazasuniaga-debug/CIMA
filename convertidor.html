@@ -258,6 +258,91 @@
         .debug-log div {
             margin-bottom: 5px;
         }
+
+        .share-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all .2s;
+            margin-bottom: 12px;
+        }
+
+        .share-option:hover {
+            border-color: #3b82f6;
+            background: #f0f7ff;
+        }
+
+        .share-option img {
+            width: 32px;
+            height: 32px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.7);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #fff;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 8px 32px rgba(0,0,0,.3);
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .modal-body {
+            margin: 16px 0;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .small {
+            font-size: 13px;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -328,9 +413,66 @@
                 <button class="copy-btn" onclick="copyLinkAgain()">Copiar link</button>
             </div>
 
+            <div style="border-top: 2px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">¿Compartir documento?</h3>
+                
+                <div class="share-option" onclick="openWhatsAppShare()">
+                    <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/whatsapp.svg">
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:13pt">Enviar por WhatsApp</div>
+                        <div class="small">Al paciente</div>
+                    </div>
+                </div>
+
+                <div class="share-option" onclick="openEmailShare()">
+                    <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/enviar.svg" style="filter:brightness(0)">
+                    <div style="flex:1">
+                        <div style="font-weight:600;font-size:13pt">Enviar por Email</div>
+                        <div class="small">Al paciente</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="button-group" style="margin-top: 30px;">
                 <button class="btn btn-secondary" onclick="resetConverter()">Nueva Conversión</button>
                 <button class="btn btn-success" onclick="window.close()">Cerrar y volver a CIMA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal WhatsApp -->
+    <div id="whatsappModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">Enviar por WhatsApp</div>
+            <div class="modal-body">
+                <label class="form-label">Nombre del paciente:</label>
+                <input type="text" id="whatsappNombre" class="form-input" placeholder="Paciente" value="Paciente">
+                
+                <label class="form-label">Teléfono:</label>
+                <input type="text" id="whatsappPhone" class="form-input" placeholder="+58 424 1090979">
+                <div class="small">Incluye código de país</div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeWhatsAppModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="sendWhatsApp()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Email -->
+    <div id="emailModal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">Enviar por Email</div>
+            <div class="modal-body">
+                <label class="form-label">Nombre del paciente:</label>
+                <input type="text" id="emailNombre" class="form-input" placeholder="Paciente" value="Paciente">
+                
+                <label class="form-label">Email:</label>
+                <input type="email" id="emailAddress" class="form-input" placeholder="paciente@email.com">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeEmailModal()">Cancelar</button>
+                <button class="btn btn-primary" onclick="sendEmail()">Enviar</button>
             </div>
         </div>
     </div>
@@ -387,10 +529,9 @@
                 list.appendChild(item);
             });
 
-            // Extraer nombre del primer archivo
             if (selectedFiles.length > 0) {
                 const firstName = selectedFiles[0].name.replace('.png', '');
-                pdfFileName = `${firstName}.pdf`;
+                pdfFileName = `${firstName.split('-')[0]}-consulta-${firstName.split('-').pop()}.pdf`;
                 document.getElementById('previewFilename').textContent = pdfFileName;
                 log(`Nombre PDF: ${pdfFileName}`);
             }
@@ -423,6 +564,7 @@
             document.getElementById('previewContainer').innerHTML = '';
             document.getElementById('debugLog').innerHTML = '';
             document.getElementById('btnNext1').style.display = 'none';
+            document.getElementById('linkBox').style.display = 'none';
             goToStep1();
         }
 
@@ -534,10 +676,8 @@
                 const pdfBlob = pdf.output('blob');
                 log(`✅ PDF generado: ${(pdfBlob.size / 1024).toFixed(0)} KB`);
 
-                // Subir a Supabase Storage
                 showStatus('☁️ Subiendo PDF a Supabase...', 'info');
                 
-                // Extraer ID del paciente del nombre del archivo
                 const patientId = pdfFileName.split('-')[0];
                 const supabasePath = `${patientId}/${pdfFileName}`;
                 
@@ -554,33 +694,22 @@
                 
                 log('✅ PDF subido a Supabase exitosamente');
 
-                // Obtener URL pública
                 const { data: urlData } = supabase.storage
                     .from('documentos-medicos')
                     .getPublicUrl(supabasePath);
 
-                const longUrl = urlData.publicUrl;
-                log(`🔗 URL larga: ${longUrl}`);
+                shortUrl = urlData.publicUrl;
+                log(`🔗 URL pública: ${shortUrl}`);
 
-                // Acortar con TinyURL
-                showStatus('🔗 Acortando link con TinyURL...', 'info');
-                
-                const tinyResponse = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
-                shortUrl = await tinyResponse.text();
-                
-                log(`✅ URL corta: ${shortUrl}`);
-
-                // Intentar copiar al portapapeles (OPCIONAL - no bloquea si falla)
                 try {
                     await navigator.clipboard.writeText(shortUrl);
                     log('📋 Link copiado al portapapeles automáticamente');
-                    showStatus('✅ PDF subido y link copiado al portapapeles', 'success');
+                    showStatus('✅ PDF subido y link copiado', 'success');
                 } catch (clipboardError) {
-                    log('⚠️ No se pudo copiar automáticamente. Usa el botón "Copiar link"');
-                    showStatus('✅ PDF subido correctamente. Usa el botón "Copiar link" abajo.', 'success');
+                    log('⚠️ Copia manualmente el link de abajo');
+                    showStatus('✅ PDF subido. Copia el link manualmente.', 'success');
                 }
 
-                // Mostrar resultado
                 document.getElementById('pdfLinkUrl').textContent = shortUrl;
                 document.getElementById('linkBox').style.display = 'block';
                 
@@ -618,7 +747,6 @@
                     showStatus('✅ Link copiado al portapapeles', 'success');
                     log('📋 Link copiado');
                 } catch (error) {
-                    // Fallback: seleccionar el texto
                     const linkElement = document.getElementById('pdfLinkUrl');
                     const range = document.createRange();
                     range.selectNode(linkElement);
@@ -628,6 +756,60 @@
                     log('⚠️ Usa Ctrl+C para copiar');
                 }
             }
+        }
+
+        function openWhatsAppShare() {
+            document.getElementById('whatsappModal').classList.add('active');
+        }
+
+        function closeWhatsAppModal() {
+            document.getElementById('whatsappModal').classList.remove('active');
+        }
+
+        function sendWhatsApp() {
+            const nombre = document.getElementById('whatsappNombre').value.trim() || 'Paciente';
+            const phone = document.getElementById('whatsappPhone').value.trim();
+            
+            if (!phone) {
+                showStatus('❌ Ingrese un número de teléfono', 'error');
+                return;
+            }
+
+            const mensaje = `Hola ${nombre},\n\nAdjunto documento de su consulta reciente:\n\n🔗 ${shortUrl}\n\nDisponible por 7 días.\n\nDra. Valentina González Yanez\nORL - Hospital de Clínicas Caracas`;
+            
+            const phoneClean = phone.replace(/[^0-9]/g, '');
+            const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+            window.open(whatsappUrl, '_blank');
+            
+            showStatus('✅ WhatsApp abierto', 'success');
+            closeWhatsAppModal();
+        }
+
+        function openEmailShare() {
+            document.getElementById('emailModal').classList.add('active');
+        }
+
+        function closeEmailModal() {
+            document.getElementById('emailModal').classList.remove('active');
+        }
+
+        function sendEmail() {
+            const nombre = document.getElementById('emailNombre').value.trim() || 'Paciente';
+            const email = document.getElementById('emailAddress').value.trim();
+            
+            if (!email) {
+                showStatus('❌ Ingrese un email', 'error');
+                return;
+            }
+
+            const asunto = 'Documentos médicos - Consulta reciente';
+            const mensaje = `Estimado/a ${nombre},\n\nAdjunto los documentos de su consulta reciente:\n\n🔗 Descargar documento: ${shortUrl}\n\nEl enlace estará disponible por 7 días.\n\n---\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
+            
+            const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensaje)}`;
+            window.open(mailtoLink, '_blank');
+            
+            showStatus('✅ Email preparado', 'success');
+            closeEmailModal();
         }
 
         function showStatus(msg, type) {
