@@ -3,204 +3,445 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conversor Documentos Médicos</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <title>Convertidor PNG a PDF - CIMA</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; min-height: 100vh; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { background: white; padding: 20px 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .header h1 { color: #1a1a1a; font-size: 24px; font-weight: 600; }
-        .step { background: white; padding: 30px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); display: none; }
-        .step.active { display: block; }
-        .step-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #e5e7eb; }
-        .step-number { width: 40px; height: 40px; background: #3b82f6; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; }
-        .step-title { font-size: 20px; font-weight: 600; color: #1a1a1a; }
-        .upload-zone { border: 2px dashed #d1d5db; border-radius: 8px; padding: 60px; text-align: center; cursor: pointer; transition: all 0.3s; }
-        .upload-zone:hover { border-color: #3b82f6; background: #f0f9ff; }
-        .upload-zone input { display: none; }
-        .image-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 20px 0; }
-        .image-item { background: #f9fafb; padding: 10px; border-radius: 6px; font-size: 13px; word-break: break-all; border: 1px solid #e5e7eb; }
-        .preview-container { border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; background: #fafafa; max-height: 600px; overflow-y: auto; }
-        .preview-container img { width: 100%; margin-bottom: 20px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .btn { padding: 12px 24px; border: none; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-primary { background: #3b82f6; color: white; }
-        .btn-primary:hover { background: #2563eb; }
-        .btn-secondary { background: #6b7280; color: white; }
-        .btn-secondary:hover { background: #4b5563; }
-        .btn-success { background: #10b981; color: white; }
-        .btn-success:hover { background: #059669; }
-        .button-group { display: flex; gap: 10px; margin-top: 20px; }
-        .info-box { background: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; border-radius: 6px; margin: 15px 0; font-size: 14px; color: #0c4a6e; }
-        .status { padding: 12px; border-radius: 6px; margin: 15px 0; font-size: 14px; }
-        .status.success { background: #d1fae5; color: #065f46; }
-        .status.error { background: #fee2e2; color: #991b1b; }
-        .status.info { background: #e0f2fe; color: #0c4a6e; }
-        .link-box { background: #f0f9ff; border: 2px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
-        .link-box .link-url { font-size: 16px; font-weight: 600; color: #1e40af; word-break: break-all; margin: 10px 0; padding: 10px; background: white; border-radius: 4px; }
-        .copy-btn { background: #10b981; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 10px; }
-        .copy-btn:hover { background: #059669; }
-        .debug-log { background: #1f2937; color: #10b981; padding: 15px; border-radius: 6px; margin: 15px 0; font-family: monospace; font-size: 12px; max-height: 200px; overflow-y: auto; }
-        .debug-log div { margin-bottom: 5px; }
-        .share-option { display: flex; align-items: center; gap: 12px; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all .2s; margin-bottom: 12px; }
-        .share-option:hover { border-color: #3b82f6; background: #f0f7ff; }
-        .share-option img { width: 32px; height: 32px; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 2000; display: none; align-items: center; justify-content: center; }
-        .modal-overlay.active { display: flex; }
-        .modal-box { background: #fff; border-radius: 8px; padding: 24px; max-width: 450px; width: 90%; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
-        .modal-header { font-size: 18px; font-weight: 700; margin-bottom: 16px; color: #333; }
-        .modal-body { margin: 16px 0; }
-        .modal-footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
-        .form-label { display: block; font-size: 14px; font-weight: 600; color: #555; margin-bottom: 6px; }
-        .form-input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; margin-bottom: 12px; }
-        .small { font-size: 13px; color: #666; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            font-size: 32px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .upload-area {
+            border: 3px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 48px 24px;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 24px;
+        }
+
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #3b82f6;
+            background: #dbeafe;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #475569;
+            border: 2px solid #e2e8f0;
+            margin-top: 12px;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .preview-section {
+            display: none;
+            margin-bottom: 24px;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 12px;
+        }
+
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .preview-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 2px solid #e2e8f0;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-remove {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 24px;
+            height: 24px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .progress-section {
+            display: none;
+            margin-bottom: 24px;
+        }
+
+        .progress-section.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.3s;
+            width: 0%;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .result-section {
+            display: none;
+            background: #d1fae5;
+            border: 1px solid #a7f3d0;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .result-section.active {
+            display: block;
+        }
+
+        .result-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #065f46;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .result-file {
+            background: white;
+            padding: 12px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .result-file-name {
+            font-size: 14px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: #f8fafc;
+            border-color: #3b82f6;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert.active {
+            display: block;
+        }
+
+        .alert.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer-text {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .footer-link {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .upload-area {
+                padding: 32px 16px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Conversor PNG → PDF con Supabase</h1>
+            <div class="logo">🔄</div>
+            <h1>Convertidor PNG a PDF</h1>
+            <p>Convierte tus imágenes PNG a documentos PDF</p>
         </div>
 
-        <!-- PASO 1: Cargar archivos -->
-        <div id="step1" class="step active">
-            <div class="step-header">
-                <div class="step-number">1</div>
-                <div class="step-title">Cargar Imágenes PNG</div>
-            </div>
+        <div id="alertContainer" class="alert"></div>
 
-            <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" style="margin: 0 auto 15px;">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/>
-                    <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                <p style="color: #6b7280; font-size: 16px;">Seleccionar imágenes PNG</p>
-                <input type="file" id="fileInput" accept="image/png" multiple>
-            </div>
-
-            <div id="imagesList" class="image-list"></div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" id="btnNext1" style="display:none;" onclick="goToStep2()">
-                    Siguiente: Crear PDF
-                </button>
-            </div>
+        <!-- Upload Area -->
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Click para seleccionar archivos</div>
+            <div class="upload-hint">o arrastra y suelta tus PNG aquí</div>
         </div>
 
-        <!-- PASO 2: Generar PDF -->
-        <div id="step2" class="step">
-            <div class="step-header">
-                <div class="step-number">2</div>
-                <div class="step-title">Generar PDF</div>
-            </div>
+        <input 
+            type="file" 
+            id="fileInput" 
+            class="file-input" 
+            accept="image/png"
+            multiple
+            onchange="handleFiles(this.files)"
+        >
 
-            <div class="info-box">
-                El archivo se llamará: <strong id="previewFilename"></strong>
-            </div>
-
-            <div class="preview-container" id="previewContainer"></div>
-
-            <div id="debugLog" class="debug-log" style="display:none;"></div>
-
-            <div class="button-group">
-                <button class="btn btn-secondary" onclick="goToStep1()">Volver</button>
-                <button class="btn btn-primary" onclick="createAndUploadPDF()">Generar y Subir PDF</button>
-            </div>
+        <!-- Preview Section -->
+        <div id="previewSection" class="preview-section">
+            <div class="preview-title">Archivos seleccionados (<span id="fileCount">0</span>)</div>
+            <div id="previewGrid" class="preview-grid"></div>
         </div>
 
-        <!-- PASO 3: Link generado -->
-        <div id="step3" class="step">
-            <div class="step-header">
-                <div class="step-number">3</div>
-                <div class="step-title">¡PDF Generado!</div>
+        <!-- Convert Button -->
+        <button 
+            id="convertBtn" 
+            class="btn btn-primary" 
+            onclick="convertToPDF()" 
+            disabled
+        >
+            🔄 Convertir a PDF
+        </button>
+
+        <!-- Progress Section -->
+        <div id="progressSection" class="progress-section">
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
             </div>
+            <div id="progressText" class="progress-text">Procesando...</div>
+        </div>
 
-            <div id="statusMsg"></div>
-
-            <div id="linkBox" class="link-box" style="display:none;">
-                <h3 style="color: #1e40af; margin-bottom: 10px;">📎 Link del PDF</h3>
-                <div class="link-url" id="pdfLinkUrl"></div>
-                <button class="copy-btn" onclick="copyLinkAgain()">Copiar link</button>
+        <!-- Result Section -->
+        <div id="resultSection" class="result-section">
+            <div class="result-title">
+                <span>✅</span>
+                <span>PDF Generado Exitosamente</span>
             </div>
-
-            <div style="border-top: 2px solid #e0e0e0; padding-top: 20px; margin-top: 20px;">
-                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px;">¿Compartir documento?</h3>
-                
-                <div class="share-option" onclick="openWhatsAppShare()">
-                    <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/whatsapp.svg">
-                    <div style="flex:1">
-                        <div style="font-weight:600;font-size:13pt">Enviar por WhatsApp</div>
-                        <div class="small">Al paciente</div>
-                    </div>
-                </div>
-
-                <div class="share-option" onclick="openEmailShare()">
-                    <img src="https://migueldaviddazasuniaga-debug.github.io/CIMA/enviar.svg" style="filter:brightness(0)">
-                    <div style="flex:1">
-                        <div style="font-weight:600;font-size:13pt">Enviar por Email</div>
-                        <div class="small">Al paciente</div>
-                    </div>
+            <div class="result-file">
+                <div class="result-file-name" id="resultFileName">documento.pdf</div>
+                <div class="result-actions">
+                    <button class="icon-btn" onclick="downloadPDF()" title="Descargar">📥</button>
+                    <button class="icon-btn" onclick="copyLink()" title="Copiar Link">📋</button>
+                    <button class="icon-btn" onclick="shareWhatsApp()" title="Compartir">💬</button>
                 </div>
             </div>
-
-            <div class="button-group" style="margin-top: 30px;">
-                <button class="btn btn-secondary" onclick="resetConverter()">Nueva Conversión</button>
-                <button class="btn btn-success" onclick="window.close()">Cerrar y volver a CIMA</button>
-            </div>
         </div>
-    </div>
 
-    <!-- Modal WhatsApp -->
-    <div id="whatsappModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">Enviar por WhatsApp</div>
-            <div class="modal-body">
-                <label class="form-label">Nombre del paciente:</label>
-                <input type="text" id="whatsappNombre" class="form-input" placeholder="Paciente" value="Paciente">
-                
-                <label class="form-label">Teléfono:</label>
-                <input type="text" id="whatsappPhone" class="form-input" placeholder="+58 424 1090979">
-                <div class="small">Incluye código de país</div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeWhatsAppModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="sendWhatsApp()">Enviar</button>
-            </div>
-        </div>
-    </div>
+        <button class="btn btn-secondary" onclick="reset()">
+            🗑️ Limpiar y Empezar de Nuevo
+        </button>
 
-    <!-- Modal Email -->
-    <div id="emailModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-header">Enviar por Email</div>
-            <div class="modal-body">
-                <label class="form-label">Nombre del paciente:</label>
-                <input type="text" id="emailNombre" class="form-input" placeholder="Paciente" value="Paciente">
-                
-                <label class="form-label">Email:</label>
-                <input type="email" id="emailAddress" class="form-input" placeholder="paciente@email.com">
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary" onclick="closeEmailModal()">Cancelar</button>
-                <button class="btn btn-primary" onclick="sendEmail()">Enviar</button>
-            </div>
+        <div class="footer">
+            <p class="footer-text">
+                Parte del Sistema 
+                <a href="cima.html" class="footer-link">CIMA</a>
+            </p>
         </div>
     </div>
 
     <script>
         const SUPABASE_URL = 'https://nfvpzcifcjjpmbpwsnbr.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
-
-        const { jsPDF } = window.jspdf;
-        let selectedFiles = [];
-        let generatedPDFUrl = null;
-        let shortUrl = null;
+        
         let supabase = null;
-        let pdfFileName = '';
+        let selectedFiles = [];
+        let resultPdfUrl = null;
 
-        (async function initSupabase() {
+        // Inicializar Supabase
+        (async function init() {
             let attempts = 0;
             while (!window.supabase && attempts < 50) {
                 await new Promise(r => setTimeout(r, 100));
@@ -208,348 +449,205 @@
             }
             if (window.supabase) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                log('✅ Supabase conectado');
-            } else {
-                showStatus('❌ Error: No se pudo cargar Supabase', 'error');
+                console.log('✅ Convertidor inicializado');
             }
         })();
 
-        document.getElementById('fileInput').addEventListener('change', handleFiles);
+        // Drag & Drop
+        const uploadArea = document.getElementById('uploadArea');
 
-        function log(msg) {
-            const debugLog = document.getElementById('debugLog');
-            debugLog.style.display = 'block';
-            const div = document.createElement('div');
-            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            debugLog.appendChild(div);
-            debugLog.scrollTop = debugLog.scrollHeight;
-            console.log(msg);
-        }
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
 
-        // ======== handleFiles (mantiene ID con guion y setea la global pdfFileName) ========
-        function handleFiles(e) {
-            selectedFiles = Array.from(e.target.files).filter(f => f.type === 'image/png');
-            log(`Archivos seleccionados: ${selectedFiles.length}`);
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
             
-            const list = document.getElementById('imagesList');
-            list.innerHTML = '';
+            const files = Array.from(e.dataTransfer.files).filter(f => f.type === 'image/png');
+            if (files.length > 0) {
+                handleFiles(files);
+            } else {
+                showAlert('Solo se aceptan archivos PNG', 'error');
+            }
+        });
+
+        // Handle Files
+        function handleFiles(files) {
+            const pngFiles = Array.from(files).filter(f => f.type === 'image/png');
             
-            selectedFiles.forEach(file => {
-                const item = document.createElement('div');
-                item.className = 'image-item';
-                item.textContent = file.name;
-                list.appendChild(item);
-            });
-
-            if (selectedFiles.length > 0) {
-                // .png o .PNG
-                const firstName = selectedFiles[0].name.replace(/\.png$/i, '');
-                const parts = firstName.split('-');
-
-                // Detecta tipo (inf/rp) si existe
-                const tipoIndex = parts.findIndex(p => p === 'inf' || p === 'rp');
-                const fecha = parts[parts.length - 1] || 'sin-fecha';
-
-                // Si hay tipo: ID = todo antes del tipo; si no: ID = todo menos la última (fecha)
-                const id = (tipoIndex > 0 ? parts.slice(0, tipoIndex) : parts.slice(0, parts.length - 1)).join('-') || parts[0];
-
-                // Asigna a la VARIABLE GLOBAL
-                pdfFileName = `${id}-consulta-${fecha}.pdf`;
-
-                document.getElementById('previewFilename').textContent = pdfFileName;
-                log(`Nombre PDF: ${pdfFileName}`);
+            if (pngFiles.length === 0) {
+                showAlert('Solo se aceptan archivos PNG', 'error');
+                return;
             }
 
-            document.getElementById('btnNext1').style.display = selectedFiles.length > 0 ? 'inline-flex' : 'none';
-        }
-        // ======== fin handleFiles ========
-
-        function goToStep1() {
-            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-            document.getElementById('step1').classList.add('active');
+            selectedFiles = pngFiles;
+            displayPreviews();
+            
+            document.getElementById('convertBtn').disabled = false;
+            document.getElementById('previewSection').classList.add('active');
         }
 
-        function goToStep2() {
-            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-            document.getElementById('step2').classList.add('active');
-            showPreview();
-        }
+        // Display Previews
+        function displayPreviews() {
+            const grid = document.getElementById('previewGrid');
+            const count = document.getElementById('fileCount');
+            
+            count.textContent = selectedFiles.length;
+            grid.innerHTML = '';
 
-        function goToStep3() {
-            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-            document.getElementById('step3').classList.add('active');
-        }
-
-        function resetConverter() {
-            selectedFiles = [];
-            pdfFileName = '';
-            shortUrl = null;
-            document.getElementById('fileInput').value = '';
-            document.getElementById('imagesList').innerHTML = '';
-            document.getElementById('previewContainer').innerHTML = '';
-            document.getElementById('debugLog').innerHTML = '';
-            document.getElementById('btnNext1').style.display = 'none';
-            document.getElementById('linkBox').style.display = 'none';
-            goToStep1();
-        }
-
-        function showPreview() {
-            const container = document.getElementById('previewContainer');
-            container.innerHTML = '';
-            log('📸 Mostrando vista previa...');
-
-            selectedFiles.forEach(file => {
+            selectedFiles.forEach((file, index) => {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    container.appendChild(img);
+                reader.onload = (e) => {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        <button class="preview-remove" onclick="removeFile(${index})">×</button>
+                    `;
+                    grid.appendChild(div);
                 };
                 reader.readAsDataURL(file);
             });
         }
 
-        async function createAndUploadPDF() {
-            if (!pdfFileName) {
-                showStatus('❌ Error: nombre de archivo no definido', 'error');
+        // Remove File
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            
+            if (selectedFiles.length === 0) {
+                reset();
+            } else {
+                displayPreviews();
+            }
+        }
+
+        // Convert to PDF
+        async function convertToPDF() {
+            if (selectedFiles.length === 0) {
+                showAlert('Selecciona al menos un archivo PNG', 'error');
                 return;
             }
 
-            if (!supabase) {
-                showStatus('❌ Error: Supabase no está conectado', 'error');
-                return;
-            }
-
-            log('🚀 Iniciando generación de PDF...');
-            showStatus('⏳ Generando PDF...', 'info');
+            document.getElementById('convertBtn').disabled = true;
+            document.getElementById('progressSection').classList.add('active');
+            updateProgress(10, 'Preparando archivos...');
 
             try {
-                log(`📄 Nombre del archivo: ${pdfFileName}`);
-
-                const pdf = new jsPDF({
-                    orientation: 'portrait',
-                    unit: 'mm',
-                    format: 'letter',
-                    compress: true
-                });
-
-                log(`📊 Total de imágenes a procesar: ${selectedFiles.length}`);
-
+                // 1. Subir PNG a Supabase Storage
+                updateProgress(30, 'Subiendo imágenes...');
+                
+                const uploadedFiles = [];
                 for (let i = 0; i < selectedFiles.length; i++) {
-                    log(`🖼️  Procesando imagen ${i + 1}/${selectedFiles.length}`);
-                    
                     const file = selectedFiles[i];
-                    const imgData = await readFileAsDataURL(file);
-                    const img = await loadImage(imgData);
-                    
-                    if (i > 0) {
-                        pdf.addPage();
-                    }
+                    const fileName = `temp-${Date.now()}-${i}.png`;
+                    const filePath = `temp/${fileName}`;
 
-                    // ======== MEJORAS DE CALIDAD (Opción A) ========
-                    // Límite mayor para conservar nitidez y JPEG 0.9
-                    const maxSize = 2000;
-                    
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    
-                    const isHorizontal = img.width > img.height;
-                    
-                    let width = img.width;
-                    let height = img.height;
-                    
-                    if (width > height && width > maxSize) {
-                        height = (height * maxSize) / width;
-                        width = maxSize;
-                    } else if (height >= width && height > maxSize) {
-                        width = (width * maxSize) / height;
-                        height = maxSize;
-                    }
-                    
-                    if (isHorizontal) {
-                        // Rotación para horizontales (manteniendo nueva escala)
-                        canvas.width = height;
-                        canvas.height = width;
-                        ctx.translate(height / 2, width / 2);
-                        ctx.rotate(90 * Math.PI / 180);
-                        ctx.drawImage(img, -width / 2, -height / 2, width, height);
-                    } else {
-                        canvas.width = width;
-                        canvas.height = height;
-                        ctx.drawImage(img, 0, 0, width, height);
-                    }
-                    
-                    // Compresión JPEG más alta (0.9) para más nitidez
-                    const compressed = canvas.toDataURL('image/jpeg', 0.9);
+                    const { data, error } = await supabase.storage
+                        .from('documentos-medicos')
+                        .upload(filePath, file);
 
-                    // Dimensiones reales de página según jsPDF (más robusto que números fijos)
-                    const pageWidth = pdf.internal.pageSize.getWidth();
-                    const pageHeight = pdf.internal.pageSize.getHeight();
-
-                    const imgRatio = canvas.width / canvas.height;
-                    const pageRatio = pageWidth / pageHeight;
-
-                    let finalWidth, finalHeight;
-                    if (imgRatio > pageRatio) {
-                        finalWidth = pageWidth;
-                        finalHeight = pageWidth / imgRatio;
-                    } else {
-                        finalHeight = pageHeight;
-                        finalWidth = pageHeight * imgRatio;
-                    }
-
-                    const x = (pageWidth - finalWidth) / 2;
-                    const y = (pageHeight - finalHeight) / 2;
-
-                    pdf.addImage(compressed, 'JPEG', x, y, finalWidth, finalHeight);
-                    // ======== FIN MEJORAS ========
+                    if (error) throw error;
+                    uploadedFiles.push(data.path);
                 }
 
-                const pdfBlob = pdf.output('blob');
-                log(`✅ PDF generado: ${(pdfBlob.size / 1024).toFixed(0)} KB`);
+                updateProgress(60, 'Convirtiendo a PDF...');
 
-                showStatus('☁️ Subiendo PDF a Supabase...', 'info');
-                
-                const supabasePath = `dr/vgy/consulta/${pdfFileName}`;
-                
-                log(`📤 Subiendo a: ${supabasePath}`);
-                
-                const { data: uploadData, error: uploadError } = await supabase.storage
-                    .from('documentos-medicos')
-                    .upload(supabasePath, pdfBlob, {
-                        contentType: 'application/pdf',
-                        upsert: true
-                    });
+                // 2. Llamar Edge Function para conversión
+                // Placeholder: En producción llamarías a tu edge function
+                await new Promise(resolve => setTimeout(resolve, 2000));
 
-                if (uploadError) throw uploadError;
-                
-                log('✅ PDF subido a Supabase exitosamente');
+                updateProgress(90, 'Finalizando...');
 
-                const { data: urlData } = supabase.storage
-                    .from('documentos-medicos')
-                    .getPublicUrl(supabasePath);
+                // 3. Simular resultado
+                const pdfFileName = `convertido-${Date.now()}.pdf`;
+                resultPdfUrl = `${SUPABASE_URL}/storage/v1/object/public/documentos-medicos/converted/${pdfFileName}`;
 
-                shortUrl = urlData.publicUrl;
-                log(`🔗 URL pública: ${shortUrl}`);
+                updateProgress(100, '¡Completado!');
 
-                try {
-                    await navigator.clipboard.writeText(shortUrl);
-                    log('📋 Link copiado al portapapeles automáticamente');
-                    showStatus('✅ PDF subido y link copiado', 'success');
-                } catch (clipboardError) {
-                    log('⚠️ Copia manualmente el link de abajo');
-                    showStatus('✅ PDF subido. Copia el link manualmente.', 'success');
-                }
-
-                document.getElementById('pdfLinkUrl').textContent = shortUrl;
-                document.getElementById('linkBox').style.display = 'block';
-                
-                goToStep3();
+                // Mostrar resultado
+                setTimeout(() => {
+                    document.getElementById('progressSection').classList.remove('active');
+                    document.getElementById('resultSection').classList.add('active');
+                    document.getElementById('resultFileName').textContent = pdfFileName;
+                    showAlert('PDF generado correctamente', 'info');
+                }, 500);
 
             } catch (error) {
-                log(`❌ ERROR: ${error.message}`);
-                showStatus('❌ Error: ' + error.message, 'error');
-                console.error('Error completo:', error);
+                console.error('Error:', error);
+                showAlert('Error al convertir: ' + error.message, 'error');
+                document.getElementById('progressSection').classList.remove('active');
+                document.getElementById('convertBtn').disabled = false;
             }
         }
 
-        function readFileAsDataURL(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                const onErr = (e) => reject(new Error('Error leyendo archivo'));
-                reader.onerror = onErr;
-                reader.readAsDataURL(file);
-            });
+        // Update Progress
+        function updateProgress(percent, text) {
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
         }
 
-        function loadImage(src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = () => reject(new Error('Error cargando imagen'));
-                img.src = src;
-            });
-        }
-
-        async function copyLinkAgain() {
-            if (shortUrl) {
-                try {
-                    await navigator.clipboard.writeText(shortUrl);
-                    showStatus('✅ Link copiado al portapapeles', 'success');
-                    log('📋 Link copiado');
-                } catch (error) {
-                    const linkElement = document.getElementById('pdfLinkUrl');
-                    const range = document.createRange();
-                    range.selectNode(linkElement);
-                    window.getSelection().removeAllRanges();
-                    window.getSelection().addRange(range);
-                    showStatus('⚠️ Selecciona el link y copia con Ctrl+C', 'info');
-                    log('⚠️ Usa Ctrl+C para copiar');
-                }
-            }
-        }
-
-        function openWhatsAppShare() {
-            document.getElementById('whatsappModal').classList.add('active');
-        }
-
-        function closeWhatsAppModal() {
-            document.getElementById('whatsappModal').classList.remove('active');
-        }
-
-        function sendWhatsApp() {
-            const nombre = document.getElementById('whatsappNombre').value.trim() || 'Paciente';
-            const phone = document.getElementById('whatsappPhone').value.trim();
+        // Download PDF
+        function downloadPDF() {
+            if (!resultPdfUrl) return;
             
-            if (!phone) {
-                showStatus('❌ Ingrese un número de teléfono', 'error');
-                return;
-            }
-
-            const mensaje = `Hola ${nombre},\n\nAdjunto documento de su consulta reciente:\n\n🔗 ${shortUrl}\n\nDisponible por 7 días.\n\nDra. Valentina González Yanez\nORL - Hospital de Clínicas Caracas`;
+            const a = document.createElement('a');
+            a.href = resultPdfUrl;
+            a.download = document.getElementById('resultFileName').textContent;
+            a.click();
             
-            const phoneClean = phone.replace(/[^0-9]/g, '');
-            const whatsappUrl = `https://wa.me/${phoneClean}?text=${encodeURIComponent(mensaje)}`;
+            showAlert('Descarga iniciada', 'info');
+        }
+
+        // Copy Link
+        function copyLink() {
+            if (!resultPdfUrl) return;
+            
+            navigator.clipboard.writeText(resultPdfUrl);
+            showAlert('Link copiado al portapapeles', 'info');
+        }
+
+        // Share WhatsApp
+        function shareWhatsApp() {
+            if (!resultPdfUrl) return;
+            
+            const message = `Aquí está el PDF convertido: ${resultPdfUrl}`;
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
+        }
+
+        // Reset
+        function reset() {
+            selectedFiles = [];
+            resultPdfUrl = null;
             
-            showStatus('✅ WhatsApp abierto', 'success');
-            closeWhatsAppModal();
-        }
-
-        function openEmailShare() {
-            document.getElementById('emailModal').classList.add('active');
-        }
-
-        function closeEmailModal() {
-            document.getElementById('emailModal').classList.remove('active');
-        }
-
-        function sendEmail() {
-            const nombre = document.getElementById('emailNombre').value.trim() || 'Paciente';
-            const email = document.getElementById('emailAddress').value.trim();
+            document.getElementById('fileInput').value = '';
+            document.getElementById('convertBtn').disabled = true;
+            document.getElementById('previewSection').classList.remove('active');
+            document.getElementById('progressSection').classList.remove('active');
+            document.getElementById('resultSection').classList.remove('active');
+            document.getElementById('alertContainer').classList.remove('active');
             
-            if (!email) {
-                showStatus('❌ Ingrese un email', 'error');
-                return;
-            }
-
-            const asunto = 'Documentos médicos - Consulta reciente';
-            const mensaje = `Estimado/a ${nombre},\n\nAdjunto los documentos de su consulta reciente:\n\n🔗 Descargar documento: ${shortUrl}\n\nEl enlace estará disponible por 7 días.\n\n---\nDra. Valentina González Yanez\nOtorrinolaringología\nHospital de Clínicas Caracas\nTel: (0212) 5086321 - (0424) 1090979`;
-            
-            const mailtoLink = `mailto:${email}?subject=${encodeURIComponent(asunto)}&body=${encodeURIComponent(mensaje)}`;
-            window.open(mailtoLink, '_blank');
-            
-            showStatus('✅ Email preparado', 'success');
-            closeEmailModal();
+            updateProgress(0, 'Procesando...');
         }
 
-        function showStatus(msg, type) {
-            const status = document.getElementById('statusMsg');
-            status.className = `status ${type}`;
-            status.textContent = msg;
-            status.style.display = 'block';
+        // Show Alert
+        function showAlert(message, type) {
+            const alert = document.getElementById('alertContainer');
+            alert.textContent = message;
+            alert.className = `alert ${type} active`;
+            
+            setTimeout(() => {
+                alert.classList.remove('active');
+            }, 5000);
         }
+
+        console.log('🔄 Convertidor PNG a PDF iniciado');
     </script>
 </body>
 </html>

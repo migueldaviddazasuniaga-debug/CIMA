@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CIMA - Panel Médico</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 16px 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .user-details h2 {
+            font-size: 18px;
+            color: #1e293b;
+            margin-bottom: 2px;
+        }
+
+        .user-details p {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .welcome-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 32px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+        }
+
+        .welcome-section h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .welcome-section p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .action-card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .action-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .action-card .icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+
+        .action-card h3 {
+            font-size: 16px;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .action-card p {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .appointments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .appointment-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .appointment-time {
+            font-size: 14px;
+            font-weight: 600;
+            color: #3b82f6;
+            min-width: 60px;
+        }
+
+        .appointment-info {
+            flex: 1;
+        }
+
+        .appointment-info .name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .appointment-info .reason {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .appointment-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .recent-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .recent-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .recent-item .patient-id {
+            font-size: 13px;
+            font-weight: 600;
+            color: #3b82f6;
+            min-width: 100px;
+        }
+
+        .recent-item .patient-info {
+            flex: 1;
+        }
+
+        .recent-item .patient-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+        }
+
+        .recent-item .patient-date {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #94a3b8;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 16px;
+            }
+
+            .quick-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">D</div>
+                <div class="user-details">
+                    <h2 id="userName">Cargando...</h2>
+                    <p id="userRole">Médico</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-secondary" onclick="window.location.href='index.html'">
+                    🚪 Cerrar Sesión
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="welcome-section">
+            <h1>¡Bienvenido/a de nuevo! 👋</h1>
+            <p>Hoy es <span id="currentDate"></span></p>
+        </div>
+
+        <div class="quick-actions">
+            <div class="action-card" onclick="openCIMA()">
+                <div class="icon">🏥</div>
+                <h3>Nueva Historia Clínica</h3>
+                <p>Crear nueva consulta</p>
+            </div>
+            <div class="action-card" onclick="openSearch()">
+                <div class="icon">🔍</div>
+                <h3>Buscar Paciente</h3>
+                <p>Buscar historias existentes</p>
+            </div>
+            <div class="action-card" onclick="openConverter()">
+                <div class="icon">🔄</div>
+                <h3>Convertidor</h3>
+                <p>PNG a PDF</p>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">📅 Mis Citas de Hoy</div>
+                <button class="btn btn-secondary btn-sm" onclick="viewAllAppointments()">
+                    Ver todas
+                </button>
+            </div>
+            <div id="appointmentsList" class="appointments-list">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    <p>No tienes citas programadas para hoy</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">📄 Consultas Recientes</div>
+                <button class="btn btn-secondary btn-sm" onclick="viewAllConsultas()">
+                    Ver todas
+                </button>
+            </div>
+            <div id="recentList" class="recent-list">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <p>No hay consultas recientes</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">
+                <div class="section-title">🔗 Links Compartidos Hoy</div>
+            </div>
+            <div id="linksList">
+                <div class="empty-state">
+                    <p style="font-size: 14px;">No se han compartido documentos hoy</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://nfvpzcifcjjpmbpwsnbr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
+        
+        let supabase = null;
+        let currentUser = null;
+
+        (async function init() {
+            const today = new Date();
+            document.getElementById('currentDate').textContent = today.toLocaleDateString('es-ES', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            let attempts = 0;
+            while (!window.supabase && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                await loadUserInfo();
+                await loadData();
+            }
+        })();
+
+        async function loadUserInfo() {
+            try {
+                currentUser = {
+                    id: 'demo-id',
+                    nombre_completo: 'Dra. Valentina González Yanez',
+                    especialidad: 'Otorrinolaringología'
+                };
+
+                document.getElementById('userName').textContent = currentUser.nombre_completo;
+                document.getElementById('userRole').textContent = currentUser.especialidad || 'Médico';
+                document.getElementById('userAvatar').textContent = currentUser.nombre_completo.charAt(0);
+            } catch (error) {
+                console.error('Error cargando usuario:', error);
+            }
+        }
+
+        async function loadData() {
+            await Promise.all([
+                loadAppointments(),
+                loadRecentConsultas(),
+                loadSharedLinks()
+            ]);
+        }
+
+        async function loadAppointments() {
+            try {
+                console.log('Citas: función pendiente de implementar');
+            } catch (error) {
+                console.error('Error cargando citas:', error);
+            }
+        }
+
+        async function loadRecentConsultas() {
+            try {
+                const { data: consultas } = await supabase
+                    .from('consultas')
+                    .select(`*,pacientes (patient_id, full_name)`)
+                    .order('fecha', { ascending: false })
+                    .limit(5);
+
+                if (!consultas || consultas.length === 0) return;
+
+                const list = document.getElementById('recentList');
+                list.innerHTML = consultas.map(c => `
+                    <div class="recent-item">
+                        <div class="patient-id">${c.pacientes?.patient_id || 'N/A'}</div>
+                        <div class="patient-info">
+                            <div class="patient-name">${c.pacientes?.full_name || 'Paciente'}</div>
+                            <div class="patient-date">${new Date(c.fecha).toLocaleDateString()}</div>
+                        </div>
+                        <span class="badge success">✓ DOC</span>
+                        <div class="appointment-actions">
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">👁️ Ver HC</button>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">📤 Compartir</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error cargando consultas:', error);
+            }
+        }
+
+        async function loadSharedLinks() {
+            try {
+                console.log('Links: función pendiente de implementar');
+            } catch (error) {
+                console.error('Error cargando links:', error);
+            }
+        }
+
+        function openCIMA() {
+            window.location.href = 'cima.html';
+        }
+
+        function openSearch() {
+            window.location.href = 'cima.html?action=search';
+        }
+
+        function openConverter() {
+            window.open('convertidor.html', '_blank');
+        }
+
+        function viewAllAppointments() {
+            alert('Función en desarrollo: Ver todas las citas');
+        }
+
+        function viewAllConsultas() {
+            window.location.href = 'cima.html?action=search';
+        }
+    </script>
+</body>
+</html>

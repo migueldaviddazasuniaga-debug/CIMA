@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M.I.K.E. System - Control Total</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #0d0d0d;
+            color: #00ff41;
+            min-height: 100vh;
+            padding: 0;
+        }
+
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(180deg, rgba(0,255,65,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,65,0.03) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 4px;
+            letter-spacing: 2px;
+            animation: glitch 3s infinite;
+        }
+
+        @keyframes glitch {
+            0%, 100% { text-shadow: 0 0 5px #00ff41; }
+            50% { text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41; }
+        }
+
+        .header .subtitle {
+            font-size: 14px;
+            opacity: 0.7;
+            letter-spacing: 1px;
+        }
+
+        .header .owner {
+            font-size: 12px;
+            margin-top: 8px;
+            opacity: 0.6;
+        }
+
+        .view-selector {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #00ff41;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .view-selector select {
+            background: #0d0d0d;
+            color: #00ff41;
+            border: 1px solid #00ff41;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .view-selector select:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-shadow: 0 0 10px #00ff41;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+        }
+
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #00ff41;
+            text-shadow: 0 0 5px #00ff41;
+        }
+
+        .btn {
+            background: #0d0d0d;
+            color: #00ff41;
+            border: 2px solid #00ff41;
+            padding: 12px 20px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn:hover {
+            background: #00ff41;
+            color: #0d0d0d;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .user-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .user-item {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #00ff41;
+            border-radius: 4px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s;
+        }
+
+        .user-item:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            background: #00ff41;
+            color: #0d0d0d;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .user-info {
+            flex: 1;
+        }
+
+        .user-name {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .user-meta {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background: rgba(0, 255, 65, 0.2);
+            border: 1px solid #00ff41;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-left: 8px;
+        }
+
+        .badge.pending {
+            background: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+        }
+
+        .tool-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid #00ff41;
+            border-radius: 6px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tool-card:hover {
+            border-color: #00ff41;
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .tool-card .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .tool-card .title {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .tool-card .description {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            opacity: 0.5;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg"></div>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🎯 M.I.K.E. SYSTEM</h1>
+            <div class="subtitle">Master Interface for Knowledge and Execution</div>
+            <div class="owner">OWNER: Miguel Daza</div>
+        </div>
+
+        <!-- Selector de Vista -->
+        <div class="view-selector">
+            <span>VISTA ACTUAL:</span>
+            <select id="viewMode" onchange="changeView()">
+                <option value="mike">🎯 M.I.K.E. (Control Total)</option>
+                <option value="medico">👨‍⚕️ Ver como Médico</option>
+                <option value="admin">👔 Ver como Administrador</option>
+                <option value="secretaria">👔 Ver como Secretaria</option>
+            </select>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="value" id="totalUsers">0</div>
+                <div class="label">Usuarios</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="totalMedicos">0</div>
+                <div class="label">Médicos</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="totalPacientes">0</div>
+                <div class="label">Pacientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="totalConsultas">0</div>
+                <div class="label">Consultas</div>
+            </div>
+        </div>
+
+        <!-- Solicitudes Pendientes -->
+        <div class="section" id="pendingSection">
+            <div class="section-title">⏳ SOLICITUDES PENDIENTES</div>
+            <div id="pendingList"></div>
+        </div>
+
+        <!-- Gestión de Usuarios -->
+        <div class="section">
+            <div class="section-title">👥 GESTIÓN DE USUARIOS</div>
+            <button class="btn" style="margin-bottom: 16px;" onclick="createUser()">
+                ➕ CREAR USUARIO
+            </button>
+            <div id="usersList" class="user-list"></div>
+        </div>
+
+        <!-- Herramientas del Sistema -->
+        <div class="section">
+            <div class="section-title">🛠️ HERRAMIENTAS DEL SISTEMA</div>
+            <div class="tools-grid">
+                <div class="tool-card" onclick="openCIMA()">
+                    <div class="icon">🏥</div>
+                    <div class="title">CIMA Clínico</div>
+                    <div class="description">Acceso completo como médico</div>
+                </div>
+                <div class="tool-card" onclick="openAdminTools()">
+                    <div class="icon">⚙️</div>
+                    <div class="title">Herramientas Admin</div>
+                    <div class="description">Gestionar BD y documentos</div>
+                </div>
+                <div class="tool-card" onclick="openSecretaria()">
+                    <div class="icon">📅</div>
+                    <div class="title">Panel Secretaria</div>
+                    <div class="description">Gestión de citas</div>
+                </div>
+                <div class="tool-card" onclick="openStats()">
+                    <div class="icon">📊</div>
+                    <div class="title">Estadísticas</div>
+                    <div class="description">Reportes del sistema</div>
+                </div>
+                <div class="tool-card" onclick="openBackup()">
+                    <div class="icon">💾</div>
+                    <div class="title">Backup</div>
+                    <div class="description">Respaldo de datos</div>
+                </div>
+                <div class="tool-card" onclick="openLogs()">
+                    <div class="icon">📝</div>
+                    <div class="title">Logs</div>
+                    <div class="description">Actividad del sistema</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sistema -->
+        <div class="section">
+            <div class="section-title">🔧 ADMINISTRACIÓN DEL SISTEMA</div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-small" onclick="window.location.href='index.html'">🚪 CERRAR SESIÓN</button>
+                <button class="btn btn-small" onclick="alert('Función en desarrollo')">🔐 Seguridad</button>
+                <button class="btn btn-small" onclick="alert('Función en desarrollo')">🌐 Configuración</button>
+                <button class="btn btn-small" onclick="alert('Función en desarrollo')">🗑️ Mantenimiento</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://nfvpzcifcjjpmbpwsnbr.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5mdnB6Y2lmY2pqcG1icHdzbmJyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1MDY3OTMsImV4cCI6MjA3NTA4Mjc5M30.wqJybCSd1am8rS5MsX1Ip7OPCsAxNy_UxD4vqlX7JQY';
+        
+        let supabase = null;
+
+        (async function init() {
+            let attempts = 0;
+            while (!window.supabase && attempts < 50) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                loadData();
+            }
+        })();
+
+        async function loadData() {
+            await Promise.all([
+                loadStats(),
+                loadPendingRequests(),
+                loadUsers()
+            ]);
+        }
+
+        async function loadStats() {
+            try {
+                const { data: users } = await supabase.from('perfiles').select('*');
+                const { data: medicos } = await supabase.from('medicos').select('*');
+                const { data: pacientes } = await supabase.from('pacientes').select('*');
+                const { data: consultas } = await supabase.from('consultas').select('*');
+
+                document.getElementById('totalUsers').textContent = users?.length || 0;
+                document.getElementById('totalMedicos').textContent = medicos?.length || 0;
+                document.getElementById('totalPacientes').textContent = pacientes?.length || 0;
+                document.getElementById('totalConsultas').textContent = consultas?.length || 0;
+            } catch (error) {
+                console.error('Error cargando stats:', error);
+            }
+        }
+
+        async function loadPendingRequests() {
+            try {
+                const { data: pending } = await supabase
+                    .from('perfiles')
+                    .select('*')
+                    .eq('estado', 'pendiente');
+
+                const list = document.getElementById('pendingList');
+                
+                if (!pending || pending.length === 0) {
+                    list.innerHTML = '<div class="empty-state">No hay solicitudes pendientes</div>';
+                    return;
+                }
+
+                list.innerHTML = pending.map(user => `
+                    <div class="user-item">
+                        <div class="user-avatar">${user.nombre_completo?.charAt(0) || '?'}</div>
+                        <div class="user-info">
+                            <div class="user-name">${user.nombre_completo || user.username}</div>
+                            <div class="user-meta">
+                                Tipo: ${user.tipo} | Fecha: ${new Date(user.created_at).toLocaleDateString()}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-small" onclick="approveUser('${user.id}')">✅ APROBAR</button>
+                            <button class="btn btn-small" onclick="rejectUser('${user.id}')">❌ RECHAZAR</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error cargando solicitudes:', error);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const { data: users } = await supabase
+                    .from('perfiles')
+                    .select('*')
+                    .neq('estado', 'pendiente')
+                    .order('created_at', { ascending: false });
+
+                const list = document.getElementById('usersList');
+                
+                if (!users || users.length === 0) {
+                    list.innerHTML = '<div class="empty-state">No hay usuarios</div>';
+                    return;
+                }
+
+                const roleLabels = {
+                    'mike': 'Owner',
+                    'medico': 'Médico',
+                    'admin': 'Administrador',
+                    'secretaria': 'Secretaria'
+                };
+
+                list.innerHTML = users.map(user => `
+                    <div class="user-item">
+                        <div class="user-avatar">${user.nombre_completo?.charAt(0) || '?'}</div>
+                        <div class="user-info">
+                            <div class="user-name">
+                                ${user.nombre_completo || user.username}
+                                <span class="badge">${roleLabels[user.tipo] || user.tipo}</span>
+                                ${user.activo ? '' : '<span class="badge pending">INACTIVO</span>'}
+                            </div>
+                            <div class="user-meta">
+                                @${user.username} | ${user.email || 'Sin email'}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn btn-small" onclick="editUser('${user.id}')">✏️</button>
+                            <button class="btn btn-small" onclick="toggleUserStatus('${user.id}', ${user.activo})">
+                                ${user.activo ? '🔒' : '✓'}
+                            </button>
+                            <button class="btn btn-small" onclick="deleteUser('${user.id}')">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error cargando usuarios:', error);
+            }
+        }
+
+        function changeView() {
+            const view = document.getElementById('viewMode').value;
+            if (view === 'medico') {
+                window.location.href = 'cima.html';
+            } else if (view === 'admin') {
+                window.location.href = 'admin-tools.html';
+            } else if (view === 'secretaria') {
+                window.location.href = 'secretaria-dashboard.html';
+            }
+        }
+
+        async function approveUser(userId) {
+            if (!confirm('¿Aprobar este usuario como Administrador?')) return;
+            try {
+                await supabase.from('perfiles').update({ estado: 'activo' }).eq('id', userId);
+                alert('✅ Usuario aprobado');
+                loadData();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function rejectUser(userId) {
+            if (!confirm('¿Rechazar esta solicitud?')) return;
+            try {
+                await supabase.from('perfiles').delete().eq('id', userId);
+                alert('❌ Solicitud rechazada');
+                loadData();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function toggleUserStatus(userId, currentStatus) {
+            try {
+                await supabase.from('perfiles').update({ activo: !currentStatus }).eq('id', userId);
+                loadData();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        async function deleteUser(userId) {
+            const confirmText = prompt('Para confirmar, escribe: BORRAR');
+            if (confirmText !== 'BORRAR') return;
+            try {
+                await supabase.from('perfiles').delete().eq('id', userId);
+                alert('🗑️ Usuario eliminado');
+                loadData();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function createUser() {
+            alert('Función en desarrollo: Crear usuario manualmente');
+        }
+
+        function editUser(userId) {
+            alert('Función en desarrollo: Editar usuario ' + userId);
+        }
+
+        function openCIMA() {
+            window.location.href = 'cima.html';
+        }
+
+        function openAdminTools() {
+            window.location.href = 'admin-tools.html';
+        }
+
+        function openSecretaria() {
+            window.location.href = 'secretaria-dashboard.html';
+        }
+
+        function openStats() {
+            alert('Función en desarrollo: Estadísticas');
+        }
+
+        function openBackup() {
+            alert('Función en desarrollo: Backup');
+        }
+
+        function openLogs() {
+            alert('Función en desarrollo: Logs');
+        }
+    </script>
+</body>
+</html>
